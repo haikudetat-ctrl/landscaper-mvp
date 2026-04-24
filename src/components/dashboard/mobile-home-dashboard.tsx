@@ -155,7 +155,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
   }
 
   return (
-    <div className="-mx-4 -mt-[15px] md:hidden">
+    <div className="-mx-4 -mt-[15px] -mb-24 md:hidden">
       <div className="grid h-[calc(100dvh-9.5rem)] grid-rows-[minmax(0,1fr)_minmax(0,4fr)_minmax(0,2fr)] overflow-hidden bg-gradient-to-br from-[#6ab967] to-[#287b40]">
         <section className="relative px-4 pt-[5px] pb-[22px]">
           <div className="relative">
