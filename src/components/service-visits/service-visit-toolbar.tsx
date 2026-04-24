@@ -57,23 +57,28 @@ export function ServiceVisitToolbar({
         ? "thisWeek"
         : "custom";
 
-  function pushRange(from: string, to: string) {
+  function pushRange(from: string, to: string, view: "today" | null) {
     const next = new URLSearchParams(searchParams.toString());
     next.set("from", from);
     next.set("to", to);
+    if (view) {
+      next.set("view", view);
+    } else {
+      next.delete("view");
+    }
     router.push(`${pathname}?${next.toString()}`);
   }
 
   function applyPreset(preset: Preset) {
     if (preset === "today") {
       setIsCustomOpen(false);
-      pushRange(today, today);
+      pushRange(today, today, "today");
       return;
     }
 
     if (preset === "thisWeek") {
       setIsCustomOpen(false);
-      pushRange(weekStart, weekEnd);
+      pushRange(weekStart, weekEnd, null);
       return;
     }
 
@@ -98,7 +103,7 @@ export function ServiceVisitToolbar({
     }
 
     setIsCustomOpen(false);
-    pushRange(customFrom, customTo);
+    pushRange(customFrom, customTo, null);
   }
 
   async function confirmWeatherShift() {

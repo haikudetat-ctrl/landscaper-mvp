@@ -2,14 +2,62 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/lib/types/database";
 import { throwDbError } from "@/lib/db/shared";
 
-export async function listServiceVisits(params?: { fromDate?: string; toDate?: string; status?: string }) {
+export async function listServiceVisits(params?: {
+  fromDate?: string;
+  toDate?: string;
+  status?: string;
+  includeMissedBacklogForDate?: string;
+}) {
   const supabase = createSupabaseServerClient();
+
+  const selectColumns =
+    "id, property_id, service_plan_id, service_type_id, scheduled_date, status, reactivation_required, quoted_price, operator_notes, skip_reason, completion_timestamp, properties(id, street_1, city, state, postal_code, client_id, clients(id, full_name, primary_phone)), service_types(id, label)";
+
+  if (params?.includeMissedBacklogForDate) {
+    const backlogResult = await supabase.rpc("list_today_visits_with_missed_backlog", {
+      p_target_date: params.includeMissedBacklogForDate,
+      p_status: params.status,
+    });
+
+    throwDbError(backlogResult.error, "Failed to load today's backlog visits");
+
+    const backlogRows = backlogResult.data ?? [];
+    if (backlogRows.length === 0) {
+      return [];
+    }
+
+    const visitIds = backlogRows.map((row) => row.service_visit_id);
+    const sortById = new Map(backlogRows.map((row) => [row.service_visit_id, row.sort_rank]));
+    const missedById = new Map(backlogRows.map((row) => [row.service_visit_id, row.is_missed_appointment]));
+
+    const visitResult = await supabase
+      .from("service_visits")
+      .select(selectColumns)
+      .in("id", visitIds)
+      .limit(300);
+
+    throwDbError(visitResult.error, "Failed to load visit details for backlog");
+
+    const detailedRows = visitResult.data ?? [];
+    const detailedById = new Map(detailedRows.map((row) => [row.id, row]));
+
+    return backlogRows
+      .map((row) => {
+        const detail = detailedById.get(row.service_visit_id);
+        if (!detail) return null;
+        return {
+          ...detail,
+          is_missed_appointment: missedById.get(row.service_visit_id) ?? false,
+          backlog_sort_rank: sortById.get(row.service_visit_id) ?? Number.MAX_SAFE_INTEGER,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => Boolean(row))
+      .sort((a, b) => a.backlog_sort_rank - b.backlog_sort_rank);
+  }
 
   let query = supabase
     .from("service_visits")
-    .select(
-      "id, property_id, service_plan_id, service_type_id, scheduled_date, status, reactivation_required, quoted_price, operator_notes, skip_reason, completion_timestamp, properties(id, street_1, city, state, postal_code, client_id, clients(id, full_name, primary_phone)), service_types(id, label)",
-    )
+    .select(selectColumns)
     .order("scheduled_date", { ascending: true });
 
   if (params?.fromDate) {

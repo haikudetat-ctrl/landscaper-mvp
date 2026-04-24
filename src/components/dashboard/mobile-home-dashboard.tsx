@@ -283,7 +283,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
 
             <div className="flex flex-col gap-[5px] pt-1">
               <Link
-                href={`/service-visits?from=${todayFilter}&to=${todayFilter}`}
+                href={`/service-visits?from=${todayFilter}&to=${todayFilter}&view=today`}
                 className={`${fixedCardClass} block bg-white`}
               >
                 <div className="flex items-start gap-2">

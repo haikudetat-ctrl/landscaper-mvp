@@ -10,7 +10,10 @@ import { listServiceVisits } from "@/lib/db/service-visits";
 import { formatAddress, formatDate } from "@/lib/utils/format";
 
 function toIsoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function getWeekBounds(referenceDate: Date): { weekStart: string; weekEnd: string } {
@@ -27,7 +30,7 @@ function getWeekBounds(referenceDate: Date): { weekStart: string; weekEnd: strin
 export default async function ServiceVisitsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string; status?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; status?: string; view?: string }>;
 }) {
   const params = await searchParams;
 
@@ -36,12 +39,17 @@ export default async function ServiceVisitsPage({
 
   const fromDate = params.from ?? weekStart;
   const toDate = params.to ?? weekEnd;
+  const includeMissedBacklog = params.view === "today";
 
   const visits = await listServiceVisits({
     fromDate,
     toDate,
     status: params.status,
+    includeMissedBacklogForDate: includeMissedBacklog ? fromDate : undefined,
   });
+  const missedCount = visits.filter((visit) =>
+    Boolean((visit as { is_missed_appointment?: boolean }).is_missed_appointment),
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -52,6 +60,12 @@ export default async function ServiceVisitsPage({
       />
 
       <ServiceVisitToolbar currentFrom={fromDate} currentTo={toDate} />
+
+      {includeMissedBacklog && missedCount > 0 ? (
+        <div className="rounded-2xl border border-red-300 bg-red-50/90 px-4 py-2 text-sm font-semibold text-red-800">
+          {missedCount} missed appointment{missedCount === 1 ? "" : "s"} from previous days require attention.
+        </div>
+      ) : null}
 
       {visits.length === 0 ? (
         <EmptyState title="No visits for selected filters" />
@@ -68,13 +82,21 @@ export default async function ServiceVisitsPage({
               const serviceType = Array.isArray(visit.service_types)
                 ? visit.service_types[0]
                 : visit.service_types;
+              const isMissed = Boolean((visit as { is_missed_appointment?: boolean }).is_missed_appointment);
 
               return (
                 <Link
                   key={visit.id}
                   href={`/service-visits/${visit.id}`}
-                  className="block rounded-md border border-zinc-200 bg-white p-3 shadow-sm"
+                  className={`block rounded-md border p-3 shadow-sm ${
+                    isMissed ? "border-red-300 bg-red-50/70" : "border-zinc-200 bg-white"
+                  }`}
                 >
+                  {isMissed ? (
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                      Missed Appointment
+                    </p>
+                  ) : null}
                   <p className="text-sm font-semibold text-zinc-900">{formatAddress(property ?? {})}</p>
                   <p className="mt-0.5 text-xs text-zinc-600">{client?.full_name ?? "No client"}</p>
                   <div className="mt-2 flex items-center justify-between gap-2 text-xs text-zinc-600">
@@ -108,14 +130,20 @@ export default async function ServiceVisitsPage({
                   const serviceType = Array.isArray(visit.service_types)
                     ? visit.service_types[0]
                     : visit.service_types;
+                  const isMissed = Boolean((visit as { is_missed_appointment?: boolean }).is_missed_appointment);
 
                   return (
-                    <tr key={visit.id} className="border-t border-zinc-200">
+                    <tr key={visit.id} className={`border-t border-zinc-200 ${isMissed ? "bg-red-50/60" : ""}`}>
                       <Td>{formatDate(visit.scheduled_date)}</Td>
                       <Td>
                         <Link href={`/service-visits/${visit.id}`} className="font-semibold text-zinc-900 underline">
                           {formatAddress(property ?? {})}
                         </Link>
+                        {isMissed ? (
+                          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-red-700">
+                            Missed appointment
+                          </p>
+                        ) : null}
                       </Td>
                       <Td>{client?.full_name ?? "-"}</Td>
                       <Td>{serviceType?.label ?? "-"}</Td>

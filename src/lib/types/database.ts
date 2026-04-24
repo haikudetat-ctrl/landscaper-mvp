@@ -1654,6 +1654,14 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: number
       }
+      list_today_visits_with_missed_backlog: {
+        Args: { p_status?: string; p_target_date?: string }
+        Returns: {
+          is_missed_appointment: boolean
+          service_visit_id: string
+          sort_rank: number
+        }[]
+      }
       refresh_invoice_status: {
         Args: { p_invoice_id: string }
         Returns: undefined
