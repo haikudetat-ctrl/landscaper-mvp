@@ -17,7 +17,7 @@ type SearchSuggestion = {
 
 function LawnMowerIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#287b40]" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-7 w-7 text-[#287b40]" aria-hidden="true">
       <circle cx="6" cy="18" r="3" fill="currentColor" />
       <circle cx="17" cy="18" r="4" fill="currentColor" />
       <path d="M5 13h10l2-5h-6l-1 2H7z" fill="currentColor" />
@@ -28,7 +28,7 @@ function LawnMowerIcon() {
 
 function ThumbsUpIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7 text-[#287b40]" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#287b40]" aria-hidden="true">
       <path
         fill="currentColor"
         d="M2 10h4v11H2zm6 11h8.7a2.2 2.2 0 0 0 2.1-1.6l2-7a2.3 2.3 0 0 0-2.2-2.9h-5l.7-3.8V5a2 2 0 0 0-2-2l-4.3 6.4z"
@@ -39,7 +39,7 @@ function ThumbsUpIcon() {
 
 function InvoiceIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7 text-[#287b40]" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#287b40]" aria-hidden="true">
       <path
         fill="currentColor"
         d="M6 2h12v20l-2-1.4L14 22l-2-1.4L10 22l-2-1.4L6 22zm2 4v2h8V6zm0 4v2h8v-2zm0 4v2h6v-2z"
@@ -48,7 +48,7 @@ function InvoiceIcon() {
   );
 }
 
-function WeatherSkipIcon({ className = "h-7 w-7 text-white" }: { className?: string }) {
+function WeatherSkipIcon({ className = "h-6 w-6 text-white" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
       <path
@@ -119,7 +119,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
     return local.toISOString().slice(0, 10);
   }, []);
 
-  const fixedCardClass = "h-[clamp(96px,14vh,124px)] rounded-2xl p-3 shadow-sm";
+  const fixedCardClass = "h-[clamp(82px,11.5vh,102px)] rounded-2xl p-2.5 shadow-sm";
 
   async function confirmWeatherSkip() {
     setIsShiftingWeather(true);
@@ -214,22 +214,22 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
           ) : null}
         </section>
 
-        <section className="overflow-y-auto bg-[#fafbfb] px-4 pt-3 pb-1">
+        <section className="overflow-hidden bg-[#fafbfb] px-4 pt-3 pb-1">
           <div className="grid h-full grid-cols-2 gap-x-3">
             <div className="col-span-2 text-zinc-900">
-              <p className="text-[13px] font-medium">Expected Monthly Revenue</p>
-              <p className="text-xl font-bold">{formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
-              <p className="mt-1.5 text-[13px] font-medium">Collected Money</p>
-              <p className="text-lg font-semibold">{formatCurrencyFromCents(data.collectedMoneyThisMonth)}</p>
-              <div className="h-2" />
-              <p className="text-[13px] font-medium">
+              <p className="text-xs font-medium">Expected Monthly Revenue</p>
+              <p className="text-lg font-bold leading-tight">{formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
+              <p className="mt-1 text-xs font-medium">Collected Money</p>
+              <p className="text-base font-semibold leading-tight">{formatCurrencyFromCents(data.collectedMoneyThisMonth)}</p>
+              <div className="h-1.5" />
+              <p className="text-xs font-medium">
                 Monthly Jobs {data.monthlyCompletedJobs}/{data.monthlyTotalJobs}
               </p>
-              <div className="h-2" />
-              <p className="text-[12px] text-zinc-600">{data.todayDateLabel}</p>
+              <div className="h-1.5" />
+              <p className="text-[11px] text-zinc-600">{data.todayDateLabel}</p>
             </div>
 
-            <div className="flex flex-col gap-[5px] pt-1.5">
+            <div className="flex flex-col gap-[5px] pt-1">
               <div
                 role="button"
                 tabIndex={0}
@@ -248,17 +248,17 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                       <LawnMowerIcon />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Next Job</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Next Job</p>
                       <a
                         href={nextJobMapUrl}
                         onClick={(event) => event.stopPropagation()}
-                        className="text-sm font-semibold text-zinc-900 underline"
+                        className="text-[13px] font-semibold leading-4 text-zinc-900 underline"
                       >
                         {formatAddress(data.nextJob ?? {})}
                       </a>
                     </div>
                   </div>
-                  <div className="mt-2 border-t border-zinc-200 pt-2 text-sm font-medium text-zinc-700">
+                  <div className="mt-1 border-t border-zinc-200 pt-1 text-[12px] font-medium text-zinc-700">
                     Job Value: {formatCurrencyFromCents(data.nextJob?.quotedPrice ?? 0)}
                   </div>
                 </div>
@@ -270,10 +270,10 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                     <InvoiceIcon />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Invoices</p>
-                    <p className="text-sm font-semibold text-zinc-900">Unpaid: {data.unpaidInvoiceCount}</p>
-                    <p className="text-sm font-semibold text-zinc-900">Overdue: {data.overdueInvoiceCount}</p>
-                    <p className="mt-1 text-xs text-zinc-600">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Invoices</p>
+                    <p className="text-[13px] font-semibold leading-4 text-zinc-900">Unpaid: {data.unpaidInvoiceCount}</p>
+                    <p className="text-[13px] font-semibold leading-4 text-zinc-900">Overdue: {data.overdueInvoiceCount}</p>
+                    <p className="mt-0.5 text-[11px] text-zinc-600">
                       Remaining {formatCurrencyFromCents(data.unpaidAmount)}
                     </p>
                   </div>
@@ -281,7 +281,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               </Link>
             </div>
 
-            <div className="flex flex-col gap-[5px] pt-1.5">
+            <div className="flex flex-col gap-[5px] pt-1">
               <Link
                 href={`/service-visits?from=${todayFilter}&to=${todayFilter}`}
                 className={`${fixedCardClass} block bg-white`}
@@ -291,11 +291,11 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                     <ThumbsUpIcon />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Today&apos;s Jobs</p>
-                    <p className="text-sm font-semibold text-zinc-900">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Today&apos;s Jobs</p>
+                    <p className="text-[13px] font-semibold leading-4 text-zinc-900">
                       {data.todayCompletedJobs}/{data.todayTotalJobs}
                     </p>
-                    <p className="mt-2 text-sm font-medium text-zinc-700">
+                    <p className="mt-1 text-[12px] font-medium leading-4 text-zinc-700">
                       Expected: {formatCurrencyFromCents(data.todayExpectedRevenue)}
                     </p>
                   </div>
@@ -309,7 +309,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                   setIsWeatherModalOpen(true);
                 }}
                 disabled={isShiftingWeather}
-                className={`${fixedCardClass} flex items-center bg-[#287b40] text-sm font-semibold text-white disabled:opacity-70`}
+                className={`${fixedCardClass} flex items-center bg-[#287b40] text-[13px] font-semibold text-white disabled:opacity-70`}
               >
                 <div className="flex items-center gap-2">
                   <WeatherSkipIcon />
@@ -318,7 +318,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               </button>
 
               {weatherShiftMessage ? (
-                <p className="rounded-xl bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                <p className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-sm rounded-xl bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 shadow">
                   {weatherShiftMessage}
                 </p>
               ) : null}
