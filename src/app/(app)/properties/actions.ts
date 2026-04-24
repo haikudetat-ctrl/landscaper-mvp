@@ -7,6 +7,10 @@ import { createProperty, updateProperty } from "@/lib/db/properties";
 import { maybeString, parseBoolean } from "@/lib/db/shared";
 import { propertyFormSchema } from "@/lib/validation/property";
 
+export type CreatePropertyFormState = {
+  error: string | null;
+};
+
 function normalizePropertyForm(formData: FormData) {
   return {
     clientId: (formData.get("clientId") as string) ?? "",
@@ -23,11 +27,14 @@ function normalizePropertyForm(formData: FormData) {
   };
 }
 
-export async function createPropertyAction(formData: FormData) {
+async function createPropertyFromForm(formData: FormData) {
   const parsed = propertyFormSchema.safeParse(normalizePropertyForm(formData));
 
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid property data");
+    return {
+      error: parsed.error.issues[0]?.message ?? "Invalid property data",
+      created: null as Awaited<ReturnType<typeof createProperty>> | null,
+    };
   }
 
   const values = parsed.data;
@@ -48,7 +55,41 @@ export async function createPropertyAction(formData: FormData) {
 
   revalidatePath("/properties");
   revalidatePath("/");
-  redirect(`/properties/${created.id}`);
+
+  return { error: null, created };
+}
+
+export async function createPropertyAction(formData: FormData) {
+  const postCreateAction = maybeString(formData.get("postCreateAction"));
+  const result = await createPropertyFromForm(formData);
+
+  if (result.error || !result.created) {
+    throw new Error(result.error ?? "Unable to create property");
+  }
+
+  if (postCreateAction === "add_service_plan") {
+    redirect(`/service-plans/new?propertyId=${result.created.id}&onboarding=1`);
+  }
+
+  redirect(`/properties/${result.created.id}`);
+}
+
+export async function createPropertyActionWithState(
+  _previousState: CreatePropertyFormState,
+  formData: FormData,
+): Promise<CreatePropertyFormState> {
+  const postCreateAction = maybeString(formData.get("postCreateAction"));
+  const result = await createPropertyFromForm(formData);
+
+  if (result.error || !result.created) {
+    return { error: result.error ?? "Unable to create property" };
+  }
+
+  if (postCreateAction === "add_service_plan") {
+    redirect(`/service-plans/new?propertyId=${result.created.id}&onboarding=1`);
+  }
+
+  redirect(`/properties/${result.created.id}`);
 }
 
 export async function updatePropertyAction(propertyId: string, formData: FormData) {

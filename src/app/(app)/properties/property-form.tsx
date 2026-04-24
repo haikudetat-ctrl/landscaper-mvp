@@ -1,3 +1,7 @@
+"use client";
+
+import { useActionState, useCallback } from "react";
+
 import type { Tables } from "@/lib/types/database";
 import { FormField, FormRow, checkboxClasses, inputClasses, selectClasses, textareaClasses } from "@/components/ui/forms";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -18,21 +22,48 @@ type PropertyDefaultValue = Pick<
   | "is_active"
 >;
 
+type FormState = { error: string | null };
+
 export function PropertyForm({
   action,
+  stateAction,
   clients,
   defaultValue,
+  initialClientId,
   submitLabel,
+  showCreateAndAddPlanButton = false,
+  requiredFieldsNote,
 }: {
   action: (formData: FormData) => Promise<void>;
+  stateAction?: (previousState: FormState, formData: FormData) => Promise<FormState>;
   clients: ClientOption[];
   defaultValue?: PropertyDefaultValue;
+  initialClientId?: string;
   submitLabel: string;
+  showCreateAndAddPlanButton?: boolean;
+  requiredFieldsNote?: string;
 }) {
+  const noStateAction = useCallback(async (previousState: FormState) => previousState, []);
+  const [state, stateFormAction] = useActionState<FormState, FormData>(stateAction ?? noStateAction, {
+    error: null,
+  });
+
   return (
-    <form action={action} className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+    <form action={stateAction ? stateFormAction : action} className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      {requiredFieldsNote ? (
+        <p className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs font-medium text-zinc-700">
+          {requiredFieldsNote}
+        </p>
+      ) : null}
+
       <FormField label="Client" name="clientId" required>
-        <select id="clientId" name="clientId" defaultValue={defaultValue?.client_id ?? ""} className={selectClasses()} required>
+        <select
+          id="clientId"
+          name="clientId"
+          defaultValue={defaultValue?.client_id ?? initialClientId ?? ""}
+          className={selectClasses()}
+          required
+        >
           <option value="">Select client</option>
           {clients.map((client) => (
             <option key={client.id} value={client.id}>
@@ -71,21 +102,22 @@ export function PropertyForm({
       </FormField>
 
       <FormRow>
-        <FormField label="City" name="city">
-          <input id="city" name="city" defaultValue={defaultValue?.city ?? ""} className={inputClasses()} />
+        <FormField label="City" name="city" required>
+          <input id="city" name="city" defaultValue={defaultValue?.city ?? ""} className={inputClasses()} required />
         </FormField>
-        <FormField label="State" name="state">
-          <input id="state" name="state" defaultValue={defaultValue?.state ?? ""} className={inputClasses()} />
+        <FormField label="State" name="state" required>
+          <input id="state" name="state" defaultValue={defaultValue?.state ?? ""} className={inputClasses()} required />
         </FormField>
       </FormRow>
 
       <FormRow>
-        <FormField label="ZIP" name="postalCode">
+        <FormField label="ZIP" name="postalCode" required>
           <input
             id="postalCode"
             name="postalCode"
             defaultValue={defaultValue?.postal_code ?? ""}
             className={inputClasses()}
+            required
           />
         </FormField>
         <FormField label="Gate/access notes" name="gateNotes">
@@ -123,7 +155,24 @@ export function PropertyForm({
         Property is active
       </label>
 
-      <SubmitButton label={submitLabel} />
+      <div className="flex flex-wrap items-center gap-2">
+        <SubmitButton label={submitLabel} />
+        {showCreateAndAddPlanButton ? (
+          <SubmitButton
+            label="Create property and add service plan"
+            pendingLabel="Creating..."
+            name="postCreateAction"
+            value="add_service_plan"
+            className="border border-emerald-200 bg-white text-zinc-700 hover:bg-emerald-50"
+          />
+        ) : null}
+      </div>
+
+      {state.error ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-zinc-700">
+          {state.error}
+        </p>
+      ) : null}
     </form>
   );
 }

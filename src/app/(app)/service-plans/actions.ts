@@ -12,6 +12,10 @@ import {
 import { maybeString, parseInteger } from "@/lib/db/shared";
 import { servicePlanFormSchema } from "@/lib/validation/service-plan";
 
+export type CreateServicePlanFormState = {
+  error: string | null;
+};
+
 function mapFrequency(value: string): string {
   if (value === "custom-interval") return "custom_interval";
   return value;
@@ -33,11 +37,14 @@ function normalizePlanForm(formData: FormData) {
   };
 }
 
-export async function createServicePlanAction(formData: FormData) {
+async function createServicePlanFromForm(formData: FormData) {
   const parsed = servicePlanFormSchema.safeParse(normalizePlanForm(formData));
 
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid service plan form");
+    return {
+      error: parsed.error.issues[0]?.message ?? "Invalid service plan form",
+      created: null as Awaited<ReturnType<typeof createServicePlan>> | null,
+    };
   }
 
   const values = parsed.data;
@@ -60,7 +67,31 @@ export async function createServicePlanAction(formData: FormData) {
 
   revalidatePath("/service-plans");
   revalidatePath("/properties");
-  redirect(`/service-plans/${created.id}`);
+
+  return { error: null, created };
+}
+
+export async function createServicePlanAction(formData: FormData) {
+  const result = await createServicePlanFromForm(formData);
+
+  if (result.error || !result.created) {
+    throw new Error(result.error ?? "Unable to create service plan");
+  }
+
+  redirect(`/service-plans/${result.created.id}`);
+}
+
+export async function createServicePlanActionWithState(
+  _previousState: CreateServicePlanFormState,
+  formData: FormData,
+): Promise<CreateServicePlanFormState> {
+  const result = await createServicePlanFromForm(formData);
+
+  if (result.error || !result.created) {
+    return { error: result.error ?? "Unable to create service plan" };
+  }
+
+  redirect(`/service-plans/${result.created.id}`);
 }
 
 export async function updateServicePlanAction(planId: string, formData: FormData) {

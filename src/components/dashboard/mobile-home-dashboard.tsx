@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 
 import type { DashboardData } from "@/lib/db/dashboard";
 import { formatAddress, formatCurrencyFromCents } from "@/lib/utils/format";
@@ -64,6 +65,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   const [isShiftingWeather, setIsShiftingWeather] = useState(false);
   const [weatherShiftMessage, setWeatherShiftMessage] = useState<string | null>(null);
@@ -119,7 +121,42 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
     return local.toISOString().slice(0, 10);
   }, []);
 
-  const fixedCardClass = "h-[clamp(112px,16vh,148px)] rounded-2xl p-2.5 shadow-sm";
+  const fixedCardClass = "h-[clamp(112px,16vh,148px)] rounded-2xl border-[0.5px] border-[#b0dcc1] p-2.5 shadow-sm";
+  const topPanelClass = "h-[clamp(112px,16vh,148px)]";
+  const cardCyanClass = "bg-[#fafbfb]";
+  const expectedRevenue = Math.max(data.expectedMonthlyRevenue, 0);
+  const collectedRevenue = Math.max(data.collectedMoneyThisMonth, 0);
+  const hasRevenueTarget = expectedRevenue > 0;
+  const revenueGap = hasRevenueTarget ? Math.max(expectedRevenue - collectedRevenue, 0) : 0;
+  const revenueAboveTarget = hasRevenueTarget ? Math.max(collectedRevenue - expectedRevenue, 0) : collectedRevenue;
+  const monthProgressRatio = useMemo(() => {
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    if (daysInMonth <= 0) return 0;
+    return Math.min(now.getDate() / daysInMonth, 1);
+  }, []);
+  const expectedRevenueToDate = hasRevenueTarget ? expectedRevenue * monthProgressRatio : 0;
+  const revenueProgress = hasRevenueTarget
+    ? Math.round((collectedRevenue / expectedRevenue) * 100)
+    : collectedRevenue > 0
+      ? 100
+      : 0;
+  const monthlyProgress = data.monthlyTotalJobs > 0 ? Math.round((data.monthlyCompletedJobs / data.monthlyTotalJobs) * 100) : 0;
+  const revenueChartData = hasRevenueTarget
+    ? [
+        { label: "Start", expected: 0, collected: 0 },
+        { label: "Today", expected: expectedRevenueToDate, collected: collectedRevenue },
+        { label: "End", expected: expectedRevenue, collected: collectedRevenue },
+      ]
+    : [
+        { label: "Start", expected: 0, collected: 0 },
+        { label: "Today", expected: 0, collected: collectedRevenue },
+        { label: "End", expected: 0, collected: collectedRevenue },
+      ];
+  const revenueChartMax = Math.max(
+    ...revenueChartData.flatMap((row) => [row.expected ?? 0, row.collected ?? 0]),
+    1
+  );
 
   async function confirmWeatherSkip() {
     setIsShiftingWeather(true);
@@ -174,7 +211,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search clients, properties, visits, invoices..."
-              className="w-full rounded-xl border border-white/70 bg-white py-2.5 pl-10 pr-10 text-sm text-zinc-900 outline-none focus:border-[#6ab967]"
+              className="w-full rounded-xl border border-white/70 bg-white py-2.5 pl-10 pr-10 text-sm text-[#666666] outline-none focus:border-[#6ab967]"
             />
             <svg
               viewBox="0 0 24 24"
@@ -186,9 +223,9 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
           </div>
 
           {query.trim().length >= 2 ? (
-            <div className="absolute left-4 right-4 top-[calc(100%-16px)] z-30 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-lg">
+              <div className="absolute left-4 right-4 top-[calc(100%-16px)] z-30 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-lg">
               {suggestions.length === 0 ? (
-                <div className="px-3 py-2 text-xs text-zinc-500">No matches found</div>
+                <div className="px-3 py-2 text-xs text-[#666666]">No matches found</div>
               ) : (
                 suggestions.map((suggestion) => (
                   <Link
@@ -200,12 +237,12 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                     }}
                     className="block border-b border-zinc-100 px-3 py-2 last:border-b-0"
                   >
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#287b40]">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">
                       {suggestion.path}
                     </div>
-                    <div className="text-sm font-medium text-zinc-900">{suggestion.title}</div>
+                    <div className="text-sm font-medium text-[#666666]">{suggestion.title}</div>
                     {suggestion.subtitle ? (
-                      <div className="text-xs text-zinc-600">{suggestion.subtitle}</div>
+                      <div className="text-xs text-[#666666]">{suggestion.subtitle}</div>
                     ) : null}
                   </Link>
                 ))
@@ -214,127 +251,314 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
           ) : null}
         </section>
 
-        <section className="overflow-hidden bg-[#fafbfb] px-4 pt-3 pb-1">
-          <div className="grid h-full grid-cols-2 gap-x-3">
-            <div className="col-span-2 text-zinc-900">
-              <p className="text-xs font-medium">Expected Monthly Revenue</p>
-              <p className="text-lg font-bold leading-tight">{formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
-              <p className="mt-1 text-xs font-medium">Collected Money</p>
-              <p className="text-base font-semibold leading-tight">{formatCurrencyFromCents(data.collectedMoneyThisMonth)}</p>
-              <div className="h-1.5" />
-              <p className="text-xs font-medium">
-                Monthly Jobs {data.monthlyCompletedJobs}/{data.monthlyTotalJobs}
-              </p>
-              <div className="h-1.5" />
-              <p className="text-[11px] text-zinc-600">{data.todayDateLabel}</p>
-            </div>
-
-            <div className="flex flex-col gap-[5px] pt-1">
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => router.push(nextJobHref)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    router.push(nextJobHref);
-                  }
-                }}
-                className={`${fixedCardClass} bg-white`}
-              >
-                <div className="flex h-full flex-col">
-                  <div className="flex flex-[2] gap-2">
-                    <div className="mt-0.5 shrink-0">
-                      <LawnMowerIcon />
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Next Job</p>
-                      <a
-                        href={nextJobMapUrl}
-                        onClick={(event) => event.stopPropagation()}
-                        className="text-[13px] font-semibold leading-4 text-zinc-900 underline"
-                      >
-                        {formatAddress(data.nextJob ?? {})}
-                      </a>
-                    </div>
-                  </div>
-                  <div className="mt-1 border-t border-zinc-200 pt-1 text-[12px] font-medium text-zinc-700">
-                    Job Value: {formatCurrencyFromCents(data.nextJob?.quotedPrice ?? 0)}
-                  </div>
-                </div>
-              </div>
-
-              <Link href="/invoices?status=overdue" className={`${fixedCardClass} bg-white`}>
-                <div className="flex h-full gap-2">
-                  <div className="mt-0.5 shrink-0">
-                    <InvoiceIcon />
+        <section className="overflow-hidden bg-white px-[18px] pt-[14px] pb-[6px]">
+          <div className="grid h-full grid-cols-2 gap-2.5">
+            <div className={`${topPanelClass} flex h-full flex-col justify-between px-0.5`}>
+                <div className="space-y-1">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666666]">
+                      Expected Monthly Revenue
+                    </p>
+                    <p className="text-[18px] font-bold leading-none text-[#666666]">
+                      {formatCurrencyFromCents(data.expectedMonthlyRevenue)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Invoices</p>
-                    <p className="text-[13px] font-semibold leading-4 text-zinc-900">Unpaid: {data.unpaidInvoiceCount}</p>
-                    <p className="text-[13px] font-semibold leading-4 text-zinc-900">Overdue: {data.overdueInvoiceCount}</p>
-                    <p className="mt-0.5 text-[11px] text-zinc-600">
-                      Remaining {formatCurrencyFromCents(data.unpaidAmount)}
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Collected Money</p>
+                    <p className="text-[18px] font-semibold leading-none text-[#287b40]">
+                      {formatCurrencyFromCents(data.collectedMoneyThisMonth)}
                     </p>
                   </div>
                 </div>
-              </Link>
+
+                <div className="space-y-1 border-t border-[#d3e7da] pt-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#666666]">
+                    <span>Monthly Jobs {data.monthlyCompletedJobs}/{data.monthlyTotalJobs}</span>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] text-[#666666]">
+                      {monthlyProgress}%
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-[#666666]">{data.todayDateLabel}</p>
+                </div>
+              </div>
+
+            <button
+              type="button"
+              onClick={() => setIsRevenueModalOpen(true)}
+              className={`${topPanelClass} flex h-full flex-col px-0.5 text-left`}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Revenue Gap</p>
+                <span className="text-[10px] font-semibold text-[#666666]">Expand</span>
+              </div>
+              <div className="relative mt-0.5 h-[64px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueChartData} margin={{ top: 2, right: 2, left: -14, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="expectedRevenueArea" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#d3e7da" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="#d3e7da" stopOpacity={0.25} />
+                      </linearGradient>
+                      <linearGradient id="collectedRevenueArea" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2f8a46" stopOpacity={0.7} />
+                        <stop offset="100%" stopColor="#2f8a46" stopOpacity={0.15} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 9, fill: "#666666" }}
+                      interval={0}
+                      height={14}
+                    />
+                    <YAxis hide domain={[0, revenueChartMax * 1.08]} />
+                    <Area
+                      type="monotone"
+                      dataKey="expected"
+                      stroke="#a5ccb3"
+                      strokeWidth={1.5}
+                      fill="url(#expectedRevenueArea)"
+                      isAnimationActive={false}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="collected"
+                      stroke="#287b40"
+                      strokeWidth={1.7}
+                      fill="url(#collectedRevenueArea)"
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-end pr-1">
+                  <span className="rounded-full bg-white/85 px-1.5 py-0.5 text-[10px] font-bold text-[#666666]">
+                    {revenueProgress}%
+                  </span>
+                </div>
+              </div>
+              <div className="mt-auto grid grid-cols-1 gap-0.5 text-[10px] text-[#666666]">
+                <p className="font-semibold">Target: {formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
+                {hasRevenueTarget ? (
+                  revenueGap > 0 ? (
+                    <p className="text-[#666666]">Gap: {formatCurrencyFromCents(revenueGap)}</p>
+                  ) : (
+                    <p className="text-[#666666]">Ahead: {formatCurrencyFromCents(revenueAboveTarget)}</p>
+                  )
+                ) : (
+                  <p className="text-[#666666]">Set a revenue target to track monthly gap.</p>
+                )}
+              </div>
+            </button>
+
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => router.push(nextJobHref)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  router.push(nextJobHref);
+                }
+              }}
+              className={`${fixedCardClass} ${cardCyanClass}`}
+            >
+              <div className="flex h-full flex-col">
+                <div className="flex flex-[2] gap-2">
+                  <div className="mt-0.5 shrink-0">
+                    <LawnMowerIcon />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">Next Job</p>
+                    <a
+                      href={nextJobMapUrl}
+                      onClick={(event) => event.stopPropagation()}
+                      className="text-[13px] font-semibold leading-4 text-[#666666] underline"
+                    >
+                      {formatAddress(data.nextJob ?? {})}
+                    </a>
+                  </div>
+                </div>
+                <div className="mt-1 border-t border-zinc-200 pt-1 text-[12px] font-medium text-[#666666]">
+                  Job Value: {formatCurrencyFromCents(data.nextJob?.quotedPrice ?? 0)}
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-[5px] pt-1">
-              <Link
-                href={`/service-visits?from=${todayFilter}&to=${todayFilter}&view=today`}
-                className={`${fixedCardClass} block ${data.overdueVisitCount > 0 ? "border border-red-300 bg-red-50/70" : "bg-white"}`}
-              >
-                <div className="flex items-start gap-2">
+            <Link
+              href={`/service-visits?from=${todayFilter}&to=${todayFilter}&view=today`}
+              className={`${fixedCardClass} block ${data.overdueVisitCount > 0 ? "border border-[#cc9933] bg-[#ffffcc]" : cardCyanClass}`}
+            >
+              <div className="flex h-full flex-col">
+                <div className="flex flex-[2] items-start gap-2">
                   <div className="mt-0.5 shrink-0">
                     <ThumbsUpIcon />
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Today&apos;s Jobs</p>
-                    <p className="text-[13px] font-semibold leading-4 text-zinc-900">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">Today&apos;s Jobs</p>
+                    <p className="text-[13px] font-semibold leading-4 text-[#666666]">
                       {data.todayCompletedJobs}/{data.todayTotalJobs}
                     </p>
-                    <p className="mt-1 text-[12px] font-medium leading-4 text-zinc-700">
+                    <p className="mt-1 text-[12px] font-medium leading-4 text-[#666666]">
                       Expected: {formatCurrencyFromCents(data.todayExpectedRevenue)}
                     </p>
-                    {data.overdueVisitCount > 0 ? (
-                      <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-red-700">
-                        Missed: {data.overdueVisitCount}
-                      </p>
-                    ) : null}
                   </div>
                 </div>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setWeatherShiftError(null);
-                  setIsWeatherModalOpen(true);
-                }}
-                disabled={isShiftingWeather}
-                className={`${fixedCardClass} flex items-center bg-[#287b40] text-[13px] font-semibold text-white disabled:opacity-70`}
-              >
-                <div className="flex items-center gap-2">
-                  <WeatherSkipIcon />
-                  <span>{isShiftingWeather ? "Shifting..." : "Weather Day Skip Button"}</span>
+                <div className="mt-1 border-t border-zinc-200 pt-1 text-[12px] font-medium">
+                  {data.overdueVisitCount > 0 ? (
+                    <span className="text-[#cc9933]">Missed: {data.overdueVisitCount}</span>
+                  ) : (
+                    <span className="text-[#666666]">No missed appointments</span>
+                  )}
                 </div>
-              </button>
+              </div>
+            </Link>
 
-              {weatherShiftMessage ? (
-                <p className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-sm rounded-xl bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 shadow">
-                  {weatherShiftMessage}
-                </p>
-              ) : null}
-            </div>
+            <Link href="/invoices?status=overdue" className={`${fixedCardClass} ${cardCyanClass}`}>
+              <div className="flex h-full flex-col">
+                <div className="flex flex-[2] gap-2">
+                  <div className="mt-0.5 shrink-0">
+                    <InvoiceIcon />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">Invoices</p>
+                    <p className="text-[13px] font-semibold leading-4 text-[#666666]">Unpaid: {data.unpaidInvoiceCount}</p>
+                    <p className="text-[13px] font-semibold leading-4 text-[#666666]">Overdue: {data.overdueInvoiceCount}</p>
+                  </div>
+                </div>
+                <div className="mt-1 border-t border-zinc-200 pt-1 text-[12px] font-medium text-[#666666]">
+                  Remaining {formatCurrencyFromCents(data.unpaidAmount)}
+                </div>
+              </div>
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                setWeatherShiftError(null);
+                setIsWeatherModalOpen(true);
+              }}
+              disabled={isShiftingWeather}
+              className={`${fixedCardClass} flex items-center ${cardCyanClass} text-[13px] font-semibold text-[#666666] disabled:opacity-70`}
+            >
+              <div className="flex items-center gap-2">
+                <WeatherSkipIcon className="h-6 w-6 text-[#287b40]" />
+                <span>{isShiftingWeather ? "Shifting..." : "Weather Day Skip Button"}</span>
+              </div>
+            </button>
+
+            {weatherShiftMessage ? (
+              <p className="fixed bottom-24 left-4 right-4 z-40 mx-auto max-w-sm rounded-xl bg-emerald-50 px-2 py-1 text-[11px] font-medium text-[#666666] shadow">
+                {weatherShiftMessage}
+              </p>
+            ) : null}
           </div>
         </section>
 
-        <section className="bg-gradient-to-br from-[#6ab967] to-[#287b40]">
+        <section
+          className="bg-gradient-to-br from-[#6ab967] to-[#287b40]"
+          style={{
+            boxShadow:
+              "inset 0 10px 10px -10px rgba(0, 0, 0, 0.25), inset 0 -10px 10px -10px rgba(0, 0, 0, 0.25)",
+          }}
+        >
           <div className="h-[10px] bg-[#fafbfb]" />
         </section>
       </div>
+
+      {isRevenueModalOpen ? (
+        <div className="fixed inset-0 z-[70] md:hidden">
+          <div className="absolute inset-0 bg-[#0f1f17]/80 backdrop-blur-sm" />
+          <div className="relative flex h-full flex-col bg-gradient-to-br from-[#f3faf5] via-[#eef7f1] to-[#e3f1e8] px-4 pb-6 pt-8">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Monthly Revenue</p>
+                <h2 className="text-2xl font-bold text-[#666666]">Revenue Gap</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRevenueModalOpen(false)}
+                className="rounded-full border border-[#b0dcc1] bg-white px-4 py-2 text-sm font-semibold text-[#666666] shadow-sm"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="rounded-3xl border border-[#b0dcc1] bg-white/85 p-4 shadow-lg">
+              <div className="h-[44dvh] min-h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={revenueChartData} margin={{ top: 14, right: 10, left: -20, bottom: 8 }}>
+                    <defs>
+                      <linearGradient id="expectedRevenueAreaExpanded" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#d3e7da" stopOpacity={0.95} />
+                        <stop offset="100%" stopColor="#d3e7da" stopOpacity={0.2} />
+                      </linearGradient>
+                      <linearGradient id="collectedRevenueAreaExpanded" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2f8a46" stopOpacity={0.8} />
+                        <stop offset="100%" stopColor="#2f8a46" stopOpacity={0.18} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "#666666" }}
+                      interval={0}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: "#666666" }}
+                      tickFormatter={(value: number) => `$${Number(value).toFixed(0)}`}
+                      domain={[0, revenueChartMax * 1.08]}
+                      width={58}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="expected"
+                      stroke="#a5ccb3"
+                      strokeWidth={2}
+                      fill="url(#expectedRevenueAreaExpanded)"
+                      isAnimationActive={false}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="collected"
+                      stroke="#287b40"
+                      strokeWidth={2.4}
+                      fill="url(#collectedRevenueAreaExpanded)"
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Expected</p>
+                  <p className="text-base font-semibold text-[#666666]">{formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
+                </div>
+                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Collected</p>
+                  <p className="text-base font-semibold text-[#287b40]">{formatCurrencyFromCents(data.collectedMoneyThisMonth)}</p>
+                </div>
+                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Progress</p>
+                  <p className="text-base font-semibold text-[#666666]">{revenueProgress}%</p>
+                </div>
+                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">
+                    {revenueGap > 0 ? "Gap" : "Ahead"}
+                  </p>
+                  <p className="text-base font-semibold text-[#666666]">
+                    {formatCurrencyFromCents(revenueGap > 0 ? revenueGap : revenueAboveTarget)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isWeatherModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/45 px-4 pb-28 pt-10">
@@ -344,21 +568,21 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                 <WeatherSkipIcon className="h-7 w-7 text-amber-700" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-zinc-900">Skip Today&apos;s Jobs?</h2>
-                <p className="mt-1 text-sm text-zinc-600">
+                <h2 className="text-base font-semibold text-[#666666]">Skip Today&apos;s Jobs?</h2>
+                <p className="mt-1 text-sm text-[#666666]">
                   This will move all of today&apos;s scheduled jobs to tomorrow using rain-delay shift.
                 </p>
               </div>
             </div>
 
             {weatherShiftError ? (
-              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{weatherShiftError}</p>
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-[#666666]">{weatherShiftError}</p>
             ) : null}
 
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button
                 type="button"
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700"
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm font-medium text-[#666666]"
                 onClick={() => setIsWeatherModalOpen(false)}
                 disabled={isShiftingWeather}
               >
@@ -366,7 +590,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-[#287b40] px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-70"
+                className="rounded-lg bg-[#287b40] px-3 py-2.5 text-sm font-semibold text-[#666666] disabled:opacity-70"
                 onClick={confirmWeatherSkip}
                 disabled={isShiftingWeather}
               >

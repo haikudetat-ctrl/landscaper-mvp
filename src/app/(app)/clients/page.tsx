@@ -21,7 +21,12 @@ export default async function ClientsPage({
       <PageHeader
         title="Clients"
         description="Manage client contact and billing details."
-        actions={<LinkButton href="/clients/new" label="New client" />}
+        actions={
+          <>
+            <LinkButton href="/clients/new?onboarding=1" label="Onboard client" />
+            <LinkButton href="/clients/new" label="New client" tone="secondary" />
+          </>
+        }
       />
 
       <form className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm" method="GET">

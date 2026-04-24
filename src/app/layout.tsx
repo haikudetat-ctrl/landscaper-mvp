@@ -9,8 +9,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Landscaping Ops MVP",
-  description: "Owner-operated landscaping operations app",
+  title: "L.O.A.M | Landscaping Operations & Management",
+  description: "L.O.A.M (Landscaping Operations & Management) for owner-operator landscaping operations.",
 };
 
 export default function RootLayout({

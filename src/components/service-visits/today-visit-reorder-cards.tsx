@@ -176,7 +176,7 @@ export function TodayVisitReorderCards({ visits }: { visits: TodayVisitCard[] })
         const cardContent = (
           <>
             {isMissed ? (
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#666666]">
                 Missed Appointment
               </p>
             ) : null}
@@ -194,7 +194,7 @@ export function TodayVisitReorderCards({ visits }: { visits: TodayVisitCard[] })
           <div
             key={visit.id}
             className={`rounded-md border p-3 shadow-sm ${
-              isMissed ? "border-red-300 bg-red-50/70" : "border-zinc-200 bg-white"
+              isMissed ? "border-[#cc9933] bg-[#ffffcc]" : "border-zinc-200 bg-white"
             }`}
           >
             <div className="mb-2 flex items-center justify-between gap-2">

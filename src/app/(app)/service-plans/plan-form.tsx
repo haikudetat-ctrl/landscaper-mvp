@@ -1,3 +1,7 @@
+"use client";
+
+import { useActionState, useCallback } from "react";
+
 import type { Tables } from "@/lib/types/database";
 import { planFrequencies, planStatuses } from "@/lib/utils/constants";
 import { formatAddress } from "@/lib/utils/format";
@@ -26,23 +30,48 @@ type ServicePlanDefaultValue = Pick<
   | "notes"
 >;
 
+type FormState = { error: string | null };
+
 export function ServicePlanForm({
   action,
+  stateAction,
   properties,
   serviceTypes,
   defaultValue,
+  initialPropertyId,
   submitLabel,
+  requiredFieldsNote,
 }: {
   action: (formData: FormData) => Promise<void>;
+  stateAction?: (previousState: FormState, formData: FormData) => Promise<FormState>;
   properties: PropertyOption[];
   serviceTypes: ServiceTypeOption[];
   defaultValue?: ServicePlanDefaultValue;
+  initialPropertyId?: string;
   submitLabel: string;
+  requiredFieldsNote?: string;
 }) {
+  const noStateAction = useCallback(async (previousState: FormState) => previousState, []);
+  const [state, stateFormAction] = useActionState<FormState, FormData>(stateAction ?? noStateAction, {
+    error: null,
+  });
+
   return (
-    <form action={action} className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+    <form action={stateAction ? stateFormAction : action} className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      {requiredFieldsNote ? (
+        <p className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs font-medium text-zinc-700">
+          {requiredFieldsNote}
+        </p>
+      ) : null}
+
       <FormField label="Property" name="propertyId" required>
-        <select id="propertyId" name="propertyId" defaultValue={defaultValue?.property_id ?? ""} className={selectClasses()} required>
+        <select
+          id="propertyId"
+          name="propertyId"
+          defaultValue={defaultValue?.property_id ?? initialPropertyId ?? ""}
+          className={selectClasses()}
+          required
+        >
           <option value="">Select property</option>
           {properties.map((property) => (
             <option key={property.id} value={property.id}>
@@ -53,8 +82,8 @@ export function ServicePlanForm({
       </FormField>
 
       <FormRow>
-        <FormField label="Plan name" name="name">
-          <input id="name" name="name" defaultValue={defaultValue?.plan_name ?? ""} className={inputClasses()} />
+        <FormField label="Plan name" name="name" required>
+          <input id="name" name="name" defaultValue={defaultValue?.plan_name ?? ""} className={inputClasses()} required />
         </FormField>
         <FormField label="Service type" name="serviceTypeId" required>
           <select id="serviceTypeId" name="serviceTypeId" defaultValue={defaultValue?.service_type_id ?? ""} className={selectClasses()} required>
@@ -161,6 +190,12 @@ export function ServicePlanForm({
       </FormField>
 
       <SubmitButton label={submitLabel} />
+
+      {state.error ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-zinc-700">
+          {state.error}
+        </p>
+      ) : null}
     </form>
   );
 }

@@ -64,7 +64,7 @@ export default async function ServiceVisitsPage({
       <ServiceVisitToolbar currentFrom={fromDate} currentTo={toDate} />
 
       {includeMissedBacklog && missedCount > 0 ? (
-        <div className="rounded-2xl border border-red-300 bg-red-50/90 px-4 py-2 text-sm font-semibold text-red-800">
+        <div className="rounded-2xl border border-[#cc9933] bg-[#ffffcc] px-4 py-2 text-sm font-semibold text-[#666666]">
           {missedCount} missed appointment{missedCount === 1 ? "" : "s"} from previous days require attention.
         </div>
       ) : null}
@@ -94,11 +94,11 @@ export default async function ServiceVisitsPage({
                     key={visit.id}
                     href={`/service-visits/${visit.id}`}
                     className={`block rounded-md border p-3 shadow-sm ${
-                      isMissed ? "border-red-300 bg-red-50/70" : "border-zinc-200 bg-white"
+                      isMissed ? "border-[#cc9933] bg-[#ffffcc]" : "border-zinc-200 bg-white"
                     }`}
                   >
                     {isMissed ? (
-                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#666666]">
                         Missed Appointment
                       </p>
                     ) : null}
@@ -139,14 +139,14 @@ export default async function ServiceVisitsPage({
                   const isMissed = Boolean((visit as { is_missed_appointment?: boolean }).is_missed_appointment);
 
                   return (
-                    <tr key={visit.id} className={`border-t border-zinc-200 ${isMissed ? "bg-red-50/60" : ""}`}>
+                    <tr key={visit.id} className={`border-t border-zinc-200 ${isMissed ? "bg-[#ffffcc]" : ""}`}>
                       <Td>{formatDate(visit.scheduled_date)}</Td>
                       <Td>
                         <Link href={`/service-visits/${visit.id}`} className="font-semibold text-zinc-900 underline">
                           {formatAddress(property ?? {})}
                         </Link>
                         {isMissed ? (
-                          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-red-700">
+                          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#666666]">
                             Missed appointment
                           </p>
                         ) : null}

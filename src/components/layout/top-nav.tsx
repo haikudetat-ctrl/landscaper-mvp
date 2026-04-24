@@ -33,7 +33,7 @@ export function TopNav() {
 
   const activeLabel = useMemo(() => {
     const item = navItems.find((navItem) => isActive(pathname, navItem.href));
-    return item?.label ?? "Landscaping Ops";
+    return item?.label ?? "L.O.A.M";
   }, [pathname]);
 
   return (
@@ -41,7 +41,7 @@ export function TopNav() {
       <header className="hidden border-b border-emerald-200/80 bg-white/85 shadow-sm backdrop-blur md:block">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-3 sm:px-6 lg:px-8">
           <div className="mr-4 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-800">
-            Landscaping Ops
+            L.O.A.M
           </div>
           <nav className="flex flex-wrap gap-1">
             {navItems.map((item) => (
@@ -65,7 +65,7 @@ export function TopNav() {
         <div className="flex items-center justify-between px-4 py-3">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100/90">
-              Landscaping Ops
+              L.O.A.M
             </p>
             <p className="text-sm font-semibold text-white">{activeLabel}</p>
           </div>
@@ -118,7 +118,7 @@ export function TopNav() {
               href={item.href}
               className={`rounded-full px-1 py-2 text-center text-[11px] font-semibold transition ${
                 isActive(pathname, item.href)
-                  ? "bg-zinc-900 text-white shadow-sm"
+                  ? "border-[0.5px] border-[#66cc33] bg-zinc-900 text-white shadow-sm"
                   : "text-zinc-700 hover:bg-emerald-100/70"
               }`}
             >
