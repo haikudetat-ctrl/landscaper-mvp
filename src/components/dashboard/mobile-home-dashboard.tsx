@@ -284,7 +284,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
             <div className="flex flex-col gap-[5px] pt-1">
               <Link
                 href={`/service-visits?from=${todayFilter}&to=${todayFilter}&view=today`}
-                className={`${fixedCardClass} block bg-white`}
+                className={`${fixedCardClass} block ${data.overdueVisitCount > 0 ? "border border-red-300 bg-red-50/70" : "bg-white"}`}
               >
                 <div className="flex items-start gap-2">
                   <div className="mt-0.5 shrink-0">
@@ -298,6 +298,11 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                     <p className="mt-1 text-[12px] font-medium leading-4 text-zinc-700">
                       Expected: {formatCurrencyFromCents(data.todayExpectedRevenue)}
                     </p>
+                    {data.overdueVisitCount > 0 ? (
+                      <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                        Missed: {data.overdueVisitCount}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </Link>

@@ -32,6 +32,11 @@ export default async function DashboardPage() {
           <SectionCard title="Today&apos;s Jobs">
             <p className="text-2xl font-semibold">{data.todayJobs.length}</p>
             <p className="mt-1 text-sm text-zinc-600">Scheduled for today</p>
+            {data.missedAppointmentCount > 0 ? (
+              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-red-700">
+                Missed backlog: {data.missedAppointmentCount}
+              </p>
+            ) : null}
           </SectionCard>
           <SectionCard title="Unpaid Balances">
             <p className="text-2xl font-semibold">

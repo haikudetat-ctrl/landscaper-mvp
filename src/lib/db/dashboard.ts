@@ -12,6 +12,7 @@ export type DashboardData = {
     openInvoiceCount: number;
     amountRemaining: number;
   };
+  missedAppointmentCount: number;
   mobile: {
     expectedMonthlyRevenue: number;
     collectedMoneyThisMonth: number;
@@ -20,6 +21,7 @@ export type DashboardData = {
     todayCompletedJobs: number;
     todayTotalJobs: number;
     todayExpectedRevenue: number;
+    overdueVisitCount: number;
     todayDateLabel: string;
     overdueInvoiceCount: number;
     overdueInvoiceAmount: number;
@@ -46,7 +48,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const monthStart = monthStartDate.toISOString().slice(0, 10);
   const nextMonthStart = nextMonthStartDate.toISOString().slice(0, 10);
-  const today = now.toISOString().slice(0, 10);
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   const [
     todayJobsResult,
@@ -58,6 +60,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     monthlyVisitsResult,
     monthlyPaymentsResult,
     nextJobResult,
+    todayBacklogResult,
   ] = await Promise.all([
     supabase.from("v_today_jobs").select("*").order("scheduled_date", { ascending: true }),
     supabase
@@ -91,6 +94,9 @@ export async function getDashboardData(): Promise<DashboardData> {
       .in("status", ["scheduled", "rescheduled", "pending_reactivation"])
       .order("scheduled_date", { ascending: true })
       .limit(1),
+    supabase.rpc("list_today_visits_with_missed_backlog", {
+      p_target_date: today,
+    }),
   ]);
 
   throwDbError(todayJobsResult.error, "Failed to load today's jobs");
@@ -102,6 +108,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   throwDbError(monthlyVisitsResult.error, "Failed to load monthly visit metrics");
   throwDbError(monthlyPaymentsResult.error, "Failed to load monthly payment metrics");
   throwDbError(nextJobResult.error, "Failed to load next job");
+  throwDbError(todayBacklogResult.error, "Failed to load missed appointment backlog");
 
   const balances = balancesResult.data ?? [];
   const amountRemaining = balances.reduce((sum, row) => {
@@ -131,6 +138,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   }, 0);
 
   const todayJobs = todayJobsResult.data ?? [];
+  const todayBacklogRows = todayBacklogResult.data ?? [];
+  const missedAppointmentCount = todayBacklogRows.filter((row) => row.is_missed_appointment).length;
   const todayTotalJobs = todayJobs.filter((job) => job.visit_status !== "canceled").length;
   const todayCompletedJobs = todayJobs.filter((job) => job.visit_status === "completed").length;
   const todayExpectedRevenue = todayJobs.reduce((sum, job) => {
@@ -168,6 +177,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       openInvoiceCount: balances.length,
       amountRemaining,
     },
+    missedAppointmentCount,
     mobile: {
       expectedMonthlyRevenue,
       collectedMoneyThisMonth,
@@ -176,6 +186,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       todayCompletedJobs,
       todayTotalJobs,
       todayExpectedRevenue,
+      overdueVisitCount: missedAppointmentCount,
       todayDateLabel: new Intl.DateTimeFormat("en-US", {
         weekday: "long",
         month: "long",
