@@ -119,7 +119,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
     return local.toISOString().slice(0, 10);
   }, []);
 
-  const fixedCardClass = "h-[140px] rounded-2xl p-3 shadow-sm";
+  const fixedCardClass = "h-[clamp(96px,14vh,124px)] rounded-2xl p-3 shadow-sm";
 
   async function confirmWeatherSkip() {
     setIsShiftingWeather(true);
@@ -156,7 +156,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
 
   return (
     <div className="-mx-4 -mt-[15px] md:hidden">
-      <div className="grid h-[calc(100svh-9.5rem)] grid-rows-[1fr_4fr_2fr] overflow-hidden bg-gradient-to-br from-[#6ab967] to-[#287b40]">
+      <div className="grid h-[calc(100dvh-9.5rem)] grid-rows-[minmax(0,1fr)_minmax(0,4fr)_minmax(0,2fr)] overflow-hidden bg-gradient-to-br from-[#6ab967] to-[#287b40]">
         <section className="relative px-4 pt-[5px] pb-[22px]">
           <div className="relative">
             <svg
@@ -214,22 +214,22 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
           ) : null}
         </section>
 
-        <section className="bg-[#fafbfb] px-4 pt-4 pb-2">
+        <section className="overflow-y-auto bg-[#fafbfb] px-4 pt-3 pb-1">
           <div className="grid h-full grid-cols-2 gap-x-3">
             <div className="col-span-2 text-zinc-900">
               <p className="text-[13px] font-medium">Expected Monthly Revenue</p>
-              <p className="text-2xl font-bold">{formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
-              <p className="mt-2 text-[13px] font-medium">Collected Money</p>
-              <p className="text-xl font-semibold">{formatCurrencyFromCents(data.collectedMoneyThisMonth)}</p>
-              <div className="h-3" />
+              <p className="text-xl font-bold">{formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
+              <p className="mt-1.5 text-[13px] font-medium">Collected Money</p>
+              <p className="text-lg font-semibold">{formatCurrencyFromCents(data.collectedMoneyThisMonth)}</p>
+              <div className="h-2" />
               <p className="text-[13px] font-medium">
                 Monthly Jobs {data.monthlyCompletedJobs}/{data.monthlyTotalJobs}
               </p>
-              <div className="h-3" />
+              <div className="h-2" />
               <p className="text-[12px] text-zinc-600">{data.todayDateLabel}</p>
             </div>
 
-            <div className="flex flex-col gap-[5px] pt-2">
+            <div className="flex flex-col gap-[5px] pt-1.5">
               <div
                 role="button"
                 tabIndex={0}
@@ -281,7 +281,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               </Link>
             </div>
 
-            <div className="flex flex-col gap-[5px] pt-2">
+            <div className="flex flex-col gap-[5px] pt-1.5">
               <Link
                 href={`/service-visits?from=${todayFilter}&to=${todayFilter}`}
                 className={`${fixedCardClass} block bg-white`}
