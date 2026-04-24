@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Landscaping Ops MVP
 
-## Getting Started
+Production-minded owner-operator internal app for a landscaping business.
 
-First, run the development server:
+## Stack
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+- Supabase (database functions/views/storage)
 
+## Environment
+Copy `.env.example` to `.env.local` and set:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (recommended for server-side writes)
+- `SUPABASE_VISIT_PHOTO_BUCKET` (defaults to `visit-photos`)
+
+## Run
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Architecture
+- `src/app/(app)` dynamic server-rendered operator routes and server actions
+- `src/lib/supabase` server/browser Supabase clients
+- `src/lib/types` schema-aligned shared types
+- `src/lib/db` typed query/action helpers
+- `src/lib/validation` Zod form validation
+- `src/components` reusable UI shell and form/table primitives
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Route Map
+- `/` dashboard
+- `/clients`, `/clients/new`, `/clients/[id]`, `/clients/[id]/edit`
+- `/properties`, `/properties/new`, `/properties/[id]`, `/properties/[id]/edit`
+- `/service-plans`, `/service-plans/new`, `/service-plans/[id]`, `/service-plans/[id]/edit`
+- `/service-visits`, `/service-visits/[id]`, `/service-visits/[id]/edit`
+- `/invoices`, `/invoices/new`, `/invoices/[id]`
+- `/communication-log`, `/communication-log/[id]`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+- Dashboard reads from existing Supabase views for operational clarity.
+- Invoice creation uses `create_invoice_for_visit(...)`.
+- Visit generation uses `generate_service_visits_for_plan(...)` and `generate_service_visits_for_active_plans(...)`.
+- Rain delay shift uses `bulk_rain_delay_shift(...)`.
+- Visit photos use Supabase Storage + `visit_photos` metadata.
