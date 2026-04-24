@@ -119,7 +119,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
     return local.toISOString().slice(0, 10);
   }, []);
 
-  const fixedCardClass = "h-[clamp(82px,11.5vh,102px)] rounded-2xl p-2.5 shadow-sm";
+  const fixedCardClass = "h-[clamp(112px,16vh,148px)] rounded-2xl p-2.5 shadow-sm";
 
   async function confirmWeatherSkip() {
     setIsShiftingWeather(true);
@@ -156,7 +156,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
 
   return (
     <div className="-mx-4 -mt-[15px] -mb-24 md:hidden">
-      <div className="grid h-[calc(100dvh-9.5rem)] grid-rows-[minmax(0,1fr)_minmax(0,4fr)_minmax(0,2fr)] overflow-hidden bg-gradient-to-br from-[#6ab967] to-[#287b40]">
+      <div className="grid h-[calc(100dvh-9.5rem)] grid-rows-[minmax(0,1fr)_minmax(0,5fr)_minmax(0,1fr)] overflow-hidden bg-gradient-to-br from-[#6ab967] to-[#287b40]">
         <section className="relative px-4 pt-[5px] pb-[22px]">
           <div className="relative">
             <svg
