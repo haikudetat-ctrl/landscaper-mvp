@@ -38,9 +38,9 @@ export function TopNav() {
 
   return (
     <>
-      <header className="hidden border-b border-zinc-200 bg-white md:block">
+      <header className="hidden border-b border-emerald-200/80 bg-white/85 shadow-sm backdrop-blur md:block">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="mr-4 text-sm font-semibold uppercase tracking-wide text-zinc-700">
+          <div className="mr-4 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-800">
             Landscaping Ops
           </div>
           <nav className="flex flex-wrap gap-1">
@@ -48,10 +48,10 @@ export function TopNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded-md px-3 py-1.5 text-sm ${
+                className={`rounded-full px-3 py-1.5 text-sm transition ${
                   isActive(pathname, item.href)
-                    ? "bg-zinc-900 text-white"
-                    : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                    ? "bg-zinc-900 text-white shadow-sm"
+                    : "border border-emerald-200 bg-white/70 text-zinc-700 hover:bg-emerald-50"
                 }`}
               >
                 {item.label}
@@ -61,18 +61,18 @@ export function TopNav() {
         </div>
       </header>
 
-      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-40 border-b border-emerald-200/70 bg-gradient-to-r from-[#5aaf61] to-[#2f8a46] text-white shadow-sm backdrop-blur md:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100/90">
               Landscaping Ops
             </p>
-            <p className="text-sm font-semibold text-zinc-900">{activeLabel}</p>
+            <p className="text-sm font-semibold text-white">{activeLabel}</p>
           </div>
           <button
             type="button"
             onClick={() => setIsMenuOpen((open) => !open)}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800"
+            className="rounded-full border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-emerald-800 shadow-sm"
             aria-expanded={isMenuOpen}
             aria-controls="mobile-nav-menu"
           >
@@ -83,13 +83,13 @@ export function TopNav() {
 
       {isMenuOpen ? (
         <div
-          className="fixed inset-0 z-50 bg-zinc-900/30 md:hidden"
+          className="fixed inset-0 z-50 bg-zinc-900/35 md:hidden"
           onClick={() => setIsMenuOpen(false)}
           aria-hidden="true"
         >
           <div
             id="mobile-nav-menu"
-            className="mx-4 mt-20 rounded-lg border border-zinc-200 bg-white p-2 shadow-lg"
+            className="mx-4 mt-20 rounded-2xl border border-emerald-200 bg-white/95 p-2 shadow-lg"
             onClick={(event) => event.stopPropagation()}
           >
             {navItems.map((item) => (
@@ -97,10 +97,10 @@ export function TopNav() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMenuOpen(false)}
-                className={`block rounded-md px-3 py-3 text-sm font-medium ${
+                className={`block rounded-xl px-3 py-3 text-sm font-semibold ${
                   isActive(pathname, item.href)
                     ? "bg-zinc-900 text-white"
-                    : "text-zinc-800 hover:bg-zinc-100"
+                    : "text-zinc-800 hover:bg-emerald-50"
                 }`}
               >
                 {item.label}
@@ -110,16 +110,16 @@ export function TopNav() {
         </div>
       ) : null}
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-1 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 bg-[#edf4ee]/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-1 backdrop-blur md:hidden">
         <div className="grid grid-cols-5 gap-1">
           {mobilePrimaryNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`rounded-md px-1 py-2 text-center text-[11px] font-medium ${
+              className={`rounded-full px-1 py-2 text-center text-[11px] font-semibold transition ${
                 isActive(pathname, item.href)
-                  ? "bg-zinc-900 text-white"
-                  : "text-zinc-700 hover:bg-zinc-100"
+                  ? "bg-zinc-900 text-white shadow-sm"
+                  : "text-zinc-700 hover:bg-emerald-100/70"
               }`}
             >
               {item.label}

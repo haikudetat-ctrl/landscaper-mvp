@@ -19,7 +19,7 @@ export function FormField({
 }) {
   return (
     <label htmlFor={name} className="flex flex-col gap-1.5 text-sm">
-      <span className="font-medium text-zinc-800">
+      <span className="font-semibold text-zinc-800">
         {label}
         {required ? <span className="ml-1 text-red-600">*</span> : null}
       </span>
@@ -30,17 +30,17 @@ export function FormField({
 }
 
 export function inputClasses() {
-  return "w-full rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-base outline-none focus:border-zinc-400 md:py-2 md:text-sm";
+  return "w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-base text-zinc-900 outline-none ring-0 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 md:py-2 md:text-sm";
 }
 
 export function textareaClasses() {
-  return "w-full rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-base outline-none focus:border-zinc-400 md:py-2 md:text-sm";
+  return "w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-base text-zinc-900 outline-none ring-0 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 md:py-2 md:text-sm";
 }
 
 export function selectClasses() {
-  return "w-full rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-base outline-none focus:border-zinc-400 md:py-2 md:text-sm";
+  return "w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-base text-zinc-900 outline-none ring-0 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 md:py-2 md:text-sm";
 }
 
 export function checkboxClasses() {
-  return "h-5 w-5 rounded border-zinc-300 md:h-4 md:w-4";
+  return "h-5 w-5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-300 md:h-4 md:w-4";
 }

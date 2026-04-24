@@ -6,8 +6,8 @@ export function EmptyState({
   description?: string;
 }) {
   return (
-    <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm text-zinc-600">
-      <p className="font-medium text-zinc-800">{title}</p>
+    <div className="rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/40 p-6 text-sm text-zinc-700">
+      <p className="font-semibold text-zinc-800">{title}</p>
       {description ? <p className="mt-1">{description}</p> : null}
     </div>
   );

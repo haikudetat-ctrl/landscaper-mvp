@@ -1,8 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f4f5;
-  --foreground: #18181b;
+  --background: #e9efea;
+  --foreground: #1d2c22;
+  --brand-500: #2f8a46;
+  --brand-400: #6ab967;
+  --brand-300: #8fd184;
+  --surface-0: #f9fcf9;
+  --surface-1: #f3f7f3;
+  --line-1: #b9d8c0;
+  --line-2: #9dcaab;
+  --text-strong: #1d2c22;
+  --text-mid: #4b6957;
+  --text-soft: #718f7c;
 }
 
 @theme inline {
@@ -17,7 +27,7 @@
 
 body {
   margin: 0;
-  background: var(--background);
+  background: linear-gradient(180deg, #e3ede6 0%, #ecf2ed 30%, #e9efea 100%);
   color: var(--foreground);
   font-family: var(--font-geist-sans), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -27,27 +37,84 @@ a {
   text-decoration: none;
 }
 
-/* Ensure dark utility button backgrounds always keep readable foreground text. */
-button[class*="bg-black"],
-button[class*="bg-zinc-900"],
-button[class*="bg-zinc-800"],
-a[class*="bg-black"],
-a[class*="bg-zinc-900"],
-a[class*="bg-zinc-800"] {
+/* Base green style mapping for legacy zinc utility usage throughout the app. */
+[class~="border-zinc-200"] {
+  border-color: var(--line-1);
+}
+
+[class~="border-zinc-300"] {
+  border-color: var(--line-2);
+}
+
+[class~="border-zinc-100"] {
+  border-color: #d9eadc;
+}
+
+[class~="divide-zinc-200"] {
+  border-color: var(--line-1);
+}
+
+[class~="bg-zinc-50"] {
+  background-color: var(--surface-1);
+}
+
+[class~="bg-zinc-100"] {
+  background-color: #e5efe7;
+}
+
+[class~="text-zinc-900"] {
+  color: var(--text-strong);
+}
+
+[class~="text-zinc-800"] {
+  color: #31503e;
+}
+
+[class~="text-zinc-700"] {
+  color: var(--text-mid);
+}
+
+[class~="text-zinc-600"] {
+  color: #5e7b69;
+}
+
+[class~="text-zinc-500"] {
+  color: var(--text-soft);
+}
+
+[class~="rounded-md"] {
+  border-radius: 0.85rem;
+}
+
+[class~="rounded-lg"] {
+  border-radius: 1rem;
+}
+
+[class~="shadow-sm"] {
+  box-shadow: 0 10px 24px -16px rgba(24, 108, 49, 0.42);
+}
+
+[class~="shadow-lg"] {
+  box-shadow: 0 22px 44px -26px rgba(24, 108, 49, 0.48);
+}
+
+[class~="bg-zinc-900"],
+[class~="bg-zinc-800"],
+button[class~="bg-black"],
+a[class~="bg-black"] {
+  background: linear-gradient(135deg, var(--brand-400), var(--brand-500));
+  border-color: transparent;
   color: #fff;
 }
 
-button[class*="bg-black"]:hover,
-button[class*="bg-zinc-900"]:hover,
-button[class*="bg-zinc-800"]:hover,
-button[class*="bg-black"]:focus-visible,
-button[class*="bg-zinc-900"]:focus-visible,
-button[class*="bg-zinc-800"]:focus-visible,
-a[class*="bg-black"]:hover,
-a[class*="bg-zinc-900"]:hover,
-a[class*="bg-zinc-800"]:hover,
-a[class*="bg-black"]:focus-visible,
-a[class*="bg-zinc-900"]:focus-visible,
-a[class*="bg-zinc-800"]:focus-visible {
+button[class~="bg-zinc-900"]:hover,
+button[class~="bg-zinc-800"]:hover,
+a[class~="bg-zinc-900"]:hover,
+a[class~="bg-zinc-800"]:hover,
+button[class~="bg-zinc-900"]:focus-visible,
+button[class~="bg-zinc-800"]:focus-visible,
+a[class~="bg-zinc-900"]:focus-visible,
+a[class~="bg-zinc-800"]:focus-visible {
   color: #fff;
+  filter: saturate(1.08) brightness(0.96);
 }
