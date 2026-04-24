@@ -11,7 +11,7 @@ export async function listServiceVisits(params?: {
   const supabase = createSupabaseServerClient();
 
   const selectColumns =
-    "id, property_id, service_plan_id, service_type_id, scheduled_date, status, reactivation_required, quoted_price, operator_notes, skip_reason, completion_timestamp, properties(id, street_1, city, state, postal_code, client_id, clients(id, full_name, primary_phone)), service_types(id, label)";
+    "id, property_id, service_plan_id, service_type_id, scheduled_date, scheduled_position, status, reactivation_required, quoted_price, operator_notes, skip_reason, completion_timestamp, properties(id, street_1, city, state, postal_code, client_id, clients(id, full_name, primary_phone)), service_types(id, label)";
 
   if (params?.includeMissedBacklogForDate) {
     const backlogResult = await supabase.rpc("list_today_visits_with_missed_backlog", {

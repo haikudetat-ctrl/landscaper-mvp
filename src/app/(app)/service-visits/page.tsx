@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ServiceVisitToolbar } from "@/components/service-visits/service-visit-toolbar";
+import { TodayVisitReorderCards } from "@/components/service-visits/today-visit-reorder-cards";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -40,6 +41,7 @@ export default async function ServiceVisitsPage({
   const fromDate = params.from ?? weekStart;
   const toDate = params.to ?? weekEnd;
   const includeMissedBacklog = params.view === "today";
+  const isTodayView = includeMissedBacklog && fromDate === toDate;
 
   const visits = await listServiceVisits({
     fromDate,
@@ -72,41 +74,45 @@ export default async function ServiceVisitsPage({
       ) : (
         <>
           <div className="space-y-2 md:hidden">
-            {visits.map((visit) => {
-              const property = Array.isArray(visit.properties) ? visit.properties[0] : visit.properties;
-              const client = property
-                ? Array.isArray(property.clients)
-                  ? property.clients[0]
-                  : property.clients
-                : null;
-              const serviceType = Array.isArray(visit.service_types)
-                ? visit.service_types[0]
-                : visit.service_types;
-              const isMissed = Boolean((visit as { is_missed_appointment?: boolean }).is_missed_appointment);
+            {isTodayView ? (
+              <TodayVisitReorderCards key={visits.map((visit) => visit.id).join(":")} visits={visits} />
+            ) : (
+              visits.map((visit) => {
+                const property = Array.isArray(visit.properties) ? visit.properties[0] : visit.properties;
+                const client = property
+                  ? Array.isArray(property.clients)
+                    ? property.clients[0]
+                    : property.clients
+                  : null;
+                const serviceType = Array.isArray(visit.service_types)
+                  ? visit.service_types[0]
+                  : visit.service_types;
+                const isMissed = Boolean((visit as { is_missed_appointment?: boolean }).is_missed_appointment);
 
-              return (
-                <Link
-                  key={visit.id}
-                  href={`/service-visits/${visit.id}`}
-                  className={`block rounded-md border p-3 shadow-sm ${
-                    isMissed ? "border-red-300 bg-red-50/70" : "border-zinc-200 bg-white"
-                  }`}
-                >
-                  {isMissed ? (
-                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-red-700">
-                      Missed Appointment
-                    </p>
-                  ) : null}
-                  <p className="text-sm font-semibold text-zinc-900">{formatAddress(property ?? {})}</p>
-                  <p className="mt-0.5 text-xs text-zinc-600">{client?.full_name ?? "No client"}</p>
-                  <div className="mt-2 flex items-center justify-between gap-2 text-xs text-zinc-600">
-                    <span>{formatDate(visit.scheduled_date)}</span>
-                    <StatusPill status={visit.status} />
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-600">{serviceType?.label ?? "-"}</p>
-                </Link>
-              );
-            })}
+                return (
+                  <Link
+                    key={visit.id}
+                    href={`/service-visits/${visit.id}`}
+                    className={`block rounded-md border p-3 shadow-sm ${
+                      isMissed ? "border-red-300 bg-red-50/70" : "border-zinc-200 bg-white"
+                    }`}
+                  >
+                    {isMissed ? (
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                        Missed Appointment
+                      </p>
+                    ) : null}
+                    <p className="text-sm font-semibold text-zinc-900">{formatAddress(property ?? {})}</p>
+                    <p className="mt-0.5 text-xs text-zinc-600">{client?.full_name ?? "No client"}</p>
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs text-zinc-600">
+                      <span>{formatDate(visit.scheduled_date)}</span>
+                      <StatusPill status={visit.status} />
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-600">{serviceType?.label ?? "-"}</p>
+                  </Link>
+                );
+              })
+            )}
           </div>
           <div className="hidden md:block">
             <DataTable>
