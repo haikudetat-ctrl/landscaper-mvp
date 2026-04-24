@@ -1,18 +1,28 @@
 import Link from "next/link";
 
+import { ServiceVisitToolbar } from "@/components/service-visits/service-visit-toolbar";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FormField, inputClasses, selectClasses } from "@/components/ui/forms";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { listServiceVisits } from "@/lib/db/service-visits";
-import { visitStatuses } from "@/lib/utils/constants";
 import { formatAddress, formatDate } from "@/lib/utils/format";
 
-import { rainDelayShiftAction } from "@/app/(app)/service-visits/actions";
+function toIsoDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function getWeekBounds(referenceDate: Date): { weekStart: string; weekEnd: string } {
+  const start = new Date(referenceDate);
+  const day = start.getDay();
+  const offset = (day + 6) % 7;
+  start.setDate(start.getDate() - offset);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+
+  return { weekStart: toIsoDate(start), weekEnd: toIsoDate(end) };
+}
 
 export default async function ServiceVisitsPage({
   searchParams,
@@ -22,11 +32,10 @@ export default async function ServiceVisitsPage({
   const params = await searchParams;
 
   const todayDate = new Date();
-  const nextWeekDate = new Date(todayDate);
-  nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+  const { weekStart, weekEnd } = getWeekBounds(todayDate);
 
-  const fromDate = params.from ?? todayDate.toISOString().slice(0, 10);
-  const toDate = params.to ?? nextWeekDate.toISOString().slice(0, 10);
+  const fromDate = params.from ?? weekStart;
+  const toDate = params.to ?? weekEnd;
 
   const visits = await listServiceVisits({
     fromDate,
@@ -42,43 +51,7 @@ export default async function ServiceVisitsPage({
         actions={<LinkButton href="/service-plans" label="Open plans" tone="secondary" />}
       />
 
-      <SectionCard title="Filters">
-        <form className="grid gap-3 md:grid-cols-4 md:items-end" method="GET">
-          <FormField label="From" name="from">
-            <input id="from" name="from" type="date" defaultValue={fromDate} className={inputClasses()} />
-          </FormField>
-          <FormField label="To" name="to">
-            <input id="to" name="to" type="date" defaultValue={toDate} className={inputClasses()} />
-          </FormField>
-          <FormField label="Status" name="status">
-            <select id="status" name="status" defaultValue={params.status ?? ""} className={selectClasses()}>
-              <option value="">All statuses</option>
-              {visitStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </FormField>
-          <button type="submit" className="rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white">
-            Apply
-          </button>
-        </form>
-      </SectionCard>
-
-      <SectionCard title="Rain Delay Bulk Shift">
-        <form action={rainDelayShiftAction} className="grid gap-3 md:grid-cols-4 md:items-end">
-          <FormField label="Date to shift" name="fromDate" required>
-            <input id="fromDate" name="fromDate" type="date" defaultValue={fromDate} className={inputClasses()} required />
-          </FormField>
-          <FormField label="Reason" name="reason" required>
-            <input id="reason" name="reason" defaultValue="Rain delay" className={inputClasses()} required />
-          </FormField>
-          <div className="sm:col-span-2">
-            <SubmitButton label="Shift day to next day" pendingLabel="Shifting..." />
-          </div>
-        </form>
-      </SectionCard>
+      <ServiceVisitToolbar currentFrom={fromDate} currentTo={toDate} />
 
       {visits.length === 0 ? (
         <EmptyState title="No visits for selected filters" />

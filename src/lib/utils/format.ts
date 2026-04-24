@@ -1,3 +1,14 @@
+function parseDateValue(value: string): Date {
+  // Date-only DB values (YYYY-MM-DD) should be treated as local calendar dates,
+  // not UTC midnights, otherwise US timezones can render one day behind.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, (month ?? 1) - 1, day ?? 1);
+  }
+
+  return new Date(value);
+}
+
 export function formatCurrencyFromCents(cents: number | null | undefined): string {
   if (typeof cents !== "number") {
     return "$0.00";
@@ -12,7 +23,7 @@ export function formatCurrencyFromCents(cents: number | null | undefined): strin
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "-";
 
-  const date = new Date(value);
+  const date = parseDateValue(value);
   if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("en-US", {
@@ -25,7 +36,7 @@ export function formatDate(value: string | null | undefined): string {
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "-";
 
-  const date = new Date(value);
+  const date = parseDateValue(value);
   if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("en-US", {
