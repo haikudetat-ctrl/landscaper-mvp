@@ -23,6 +23,7 @@ export default async function ClientsPage({
         description="Manage client contact and billing details."
         actions={
           <>
+            <LinkButton href="/clients/import" label="Bulk import" />
             <LinkButton href="/clients/new?onboarding=1" label="Onboard client" />
             <LinkButton href="/clients/new" label="New client" tone="secondary" />
           </>

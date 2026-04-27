@@ -7,7 +7,7 @@ export async function listProperties(search?: string) {
 
   let query = supabase
     .from("properties")
-    .select("id, client_id, property_name, street_1, street_2, city, state, postal_code, is_active, service_notes, access_notes, clients(id, full_name, primary_email, primary_phone)")
+    .select("id, client_id, property_name, street_1, street_2, city, state, postal_code, latitude, longitude, is_active, service_notes, access_notes, clients(id, full_name, primary_email, primary_phone)")
     .order("street_1", { ascending: true });
 
   if (search && search.trim()) {
