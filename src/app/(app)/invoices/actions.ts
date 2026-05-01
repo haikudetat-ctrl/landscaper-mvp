@@ -7,6 +7,12 @@ import { createInvoiceForVisit, recordPayment } from "@/lib/db/invoices";
 import { maybeString, parseInteger } from "@/lib/db/shared";
 import { createInvoiceSchema, recordPaymentSchema } from "@/lib/validation/invoice";
 
+export type CreateInvoiceFormState = {
+  error: string | null;
+  success?: string | null;
+  createdId?: string | null;
+};
+
 export async function createInvoiceFromVisitAction(visitId: string, formData: FormData) {
   const dueDays = parseInteger(formData.get("dueDays")) ?? 14;
 
@@ -25,6 +31,39 @@ export async function createInvoiceFromVisitAction(visitId: string, formData: Fo
   revalidatePath("/service-visits");
   revalidatePath("/");
   redirect(`/invoices/${invoiceId}`);
+}
+
+export async function createInvoiceFromVisitSheetAction(
+  visitId: string,
+  _previousState: CreateInvoiceFormState,
+  formData: FormData,
+): Promise<CreateInvoiceFormState> {
+  const dueDays = parseInteger(formData.get("dueDays")) ?? 14;
+
+  const parsed = createInvoiceSchema.safeParse({
+    visitId,
+    dueDays,
+  });
+
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Invalid invoice creation input",
+      success: null,
+      createdId: null,
+    };
+  }
+
+  const invoiceId = await createInvoiceForVisit(parsed.data.visitId, parsed.data.dueDays);
+
+  revalidatePath("/invoices");
+  revalidatePath("/service-visits");
+  revalidatePath("/");
+
+  return {
+    error: null,
+    success: "Invoice created successfully.",
+    createdId: invoiceId,
+  };
 }
 
 export async function recordPaymentAction(invoiceId: string, formData: FormData) {

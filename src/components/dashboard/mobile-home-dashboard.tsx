@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import type { DashboardData } from "@/lib/db/dashboard";
 import { formatAddress, formatCurrencyFromCents } from "@/lib/utils/format";
@@ -15,50 +15,6 @@ type SearchSuggestion = {
   path: string;
   subtitle?: string;
 };
-
-function LawnMowerIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7 text-[#287b40]" aria-hidden="true">
-      <circle cx="6" cy="18" r="3" fill="currentColor" />
-      <circle cx="17" cy="18" r="4" fill="currentColor" />
-      <path d="M5 13h10l2-5h-6l-1 2H7z" fill="currentColor" />
-      <path d="M10 8l2-4h2l-2 4z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function ThumbsUpIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#287b40]" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M2 10h4v11H2zm6 11h8.7a2.2 2.2 0 0 0 2.1-1.6l2-7a2.3 2.3 0 0 0-2.2-2.9h-5l.7-3.8V5a2 2 0 0 0-2-2l-4.3 6.4z"
-      />
-    </svg>
-  );
-}
-
-function InvoiceIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6 text-[#287b40]" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M6 2h12v20l-2-1.4L14 22l-2-1.4L10 22l-2-1.4L6 22zm2 4v2h8V6zm0 4v2h8v-2zm0 4v2h6v-2z"
-      />
-    </svg>
-  );
-}
-
-function WeatherSkipIcon({ className = "h-6 w-6 text-white" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M7 18a4 4 0 1 1 0-8a5 5 0 0 1 9.7-1A3.5 3.5 0 1 1 18.5 18zm-2.2 4l2.4-3.6h1.6L6.4 22zm5 0l2.4-3.6h1.6L11.4 22zm5 0l2.4-3.6h1.6L16.4 22z"
-      />
-    </svg>
-  );
-}
 
 export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] }) {
   const router = useRouter();
@@ -120,43 +76,40 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
     return local.toISOString().slice(0, 10);
   }, []);
+  const weatherRangeLabel =
+    data.weather?.tempLow != null && data.weather?.tempHigh != null
+      ? `${data.weather.tempLow}\u00b0-${data.weather.tempHigh}\u00b0`
+      : data.weather?.tempHigh != null
+        ? `High ${data.weather.tempHigh}\u00b0`
+        : data.weather?.tempLow != null
+          ? `Low ${data.weather.tempLow}\u00b0`
+          : null;
 
   const fixedCardClass = "h-[clamp(112px,16vh,148px)] rounded-2xl border-[0.5px] border-[#b0dcc1] p-2.5 shadow-sm";
   const topPanelClass = "h-[clamp(112px,16vh,148px)]";
   const cardCyanClass = "bg-[#fafbfb]";
   const expectedRevenue = Math.max(data.expectedMonthlyRevenue, 0);
   const collectedRevenue = Math.max(data.collectedMoneyThisMonth, 0);
+  const overdueRevenue = Math.max(data.rollingOverdueInvoiceAmount, 0);
+  const unpaidCurrentRevenue = Math.max(data.rollingUnpaidInvoiceAmount - overdueRevenue, 0);
   const hasRevenueTarget = expectedRevenue > 0;
   const revenueGap = hasRevenueTarget ? Math.max(expectedRevenue - collectedRevenue, 0) : 0;
   const revenueAboveTarget = hasRevenueTarget ? Math.max(collectedRevenue - expectedRevenue, 0) : collectedRevenue;
-  const monthProgressRatio = useMemo(() => {
-    const now = new Date();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    if (daysInMonth <= 0) return 0;
-    return Math.min(now.getDate() / daysInMonth, 1);
-  }, []);
-  const expectedRevenueToDate = hasRevenueTarget ? expectedRevenue * monthProgressRatio : 0;
   const revenueProgress = hasRevenueTarget
     ? Math.round((collectedRevenue / expectedRevenue) * 100)
     : collectedRevenue > 0
       ? 100
       : 0;
   const monthlyProgress = data.monthlyTotalJobs > 0 ? Math.round((data.monthlyCompletedJobs / data.monthlyTotalJobs) * 100) : 0;
-  const revenueChartData = hasRevenueTarget
+  const revenuePieData = hasRevenueTarget
     ? [
-        { label: "Start", expected: 0, collected: 0 },
-        { label: "Today", expected: expectedRevenueToDate, collected: collectedRevenue },
-        { label: "End", expected: expectedRevenue, collected: collectedRevenue },
-      ]
+        { name: "Collected", value: Math.max(collectedRevenue, 0), fill: "#287b40" },
+        { name: "Unpaid", value: unpaidCurrentRevenue, fill: "#a5ccb3" },
+        { name: "Overdue", value: overdueRevenue, fill: "#cc9933" },
+      ].filter((slice) => slice.value > 0)
     : [
-        { label: "Start", expected: 0, collected: 0 },
-        { label: "Today", expected: 0, collected: collectedRevenue },
-        { label: "End", expected: 0, collected: collectedRevenue },
+        { name: "Collected", value: Math.max(collectedRevenue, 1), fill: "#287b40" },
       ];
-  const revenueChartMax = Math.max(
-    ...revenueChartData.flatMap((row) => [row.expected ?? 0, row.collected ?? 0]),
-    1
-  );
 
   async function confirmWeatherSkip() {
     setIsShiftingWeather(true);
@@ -257,16 +210,20 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                 <div className="space-y-1">
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666666]">
-                      Expected Monthly Revenue
+                      Rolling 4 Weeks Revenue
                     </p>
                     <p className="text-[18px] font-bold leading-none text-[#666666]">
                       {formatCurrencyFromCents(data.expectedMonthlyRevenue)}
                     </p>
+                    <p className="mt-0.5 text-[10px] text-[#666666]">{data.rollingRevenueWindowLabel}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Collected Money</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Collected 4 Weeks</p>
                     <p className="text-[18px] font-semibold leading-none text-[#287b40]">
                       {formatCurrencyFromCents(data.collectedMoneyThisMonth)}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-[#666666]">
+                      Sent {data.rollingSentInvoiceCount} • Unpaid {data.rollingUnpaidInvoiceCount}
                     </p>
                   </div>
                 </div>
@@ -293,61 +250,28 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               </div>
               <div className="relative mt-0.5 h-[64px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueChartData} margin={{ top: 2, right: 2, left: -14, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="expectedRevenueArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#d3e7da" stopOpacity={0.95} />
-                        <stop offset="100%" stopColor="#d3e7da" stopOpacity={0.25} />
-                      </linearGradient>
-                      <linearGradient id="collectedRevenueArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2f8a46" stopOpacity={0.7} />
-                        <stop offset="100%" stopColor="#2f8a46" stopOpacity={0.15} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="label"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "#666666" }}
-                      interval={0}
-                      height={14}
-                    />
-                    <YAxis hide domain={[0, revenueChartMax * 1.08]} />
-                    <Area
-                      type="monotone"
-                      dataKey="expected"
-                      stroke="#a5ccb3"
-                      strokeWidth={1.5}
-                      fill="url(#expectedRevenueArea)"
+                  <PieChart>
+                    <Pie
+                      data={revenuePieData}
+                      dataKey="value"
+                      innerRadius="74%"
+                      outerRadius="100%"
+                      cornerRadius="50%"
+                      paddingAngle={5}
                       isAnimationActive={false}
                     />
-                    <Area
-                      type="monotone"
-                      dataKey="collected"
-                      stroke="#287b40"
-                      strokeWidth={1.7}
-                      fill="url(#collectedRevenueArea)"
-                      isAnimationActive={false}
-                    />
-                  </AreaChart>
+                  </PieChart>
                 </ResponsiveContainer>
-                <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-end pr-1">
-                  <span className="rounded-full bg-white/85 px-1.5 py-0.5 text-[10px] font-bold text-[#666666]">
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <span className="rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-[#666666] shadow-sm">
                     {revenueProgress}%
                   </span>
                 </div>
               </div>
               <div className="mt-auto grid grid-cols-1 gap-0.5 text-[10px] text-[#666666]">
-                <p className="font-semibold">Target: {formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
-                {hasRevenueTarget ? (
-                  revenueGap > 0 ? (
-                    <p className="text-[#666666]">Gap: {formatCurrencyFromCents(revenueGap)}</p>
-                  ) : (
-                    <p className="text-[#666666]">Ahead: {formatCurrencyFromCents(revenueAboveTarget)}</p>
-                  )
-                ) : (
-                  <p className="text-[#666666]">Set a revenue target to track monthly gap.</p>
-                )}
+                <p className="font-semibold">{data.rollingRevenueWindowLabel}</p>
+                <p>Expected: {formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
+                <p>Collected: {formatCurrencyFromCents(data.collectedMoneyThisMonth)}</p>
               </div>
             </button>
 
@@ -366,7 +290,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               <div className="flex h-full flex-col">
                 <div className="flex flex-[2] gap-2">
                   <div className="mt-0.5 shrink-0">
-                    <LawnMowerIcon />
+                    <img src="/LOAM_Mower_Icon.svg" alt="Next Job" className="h-[2.1875rem] w-[2.1875rem]" />
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">Next Job</p>
@@ -386,13 +310,13 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
             </div>
 
             <Link
-              href={`/service-visits?from=${todayFilter}&to=${todayFilter}&view=today`}
+              href="/run"
               className={`${fixedCardClass} block ${data.overdueVisitCount > 0 ? "border border-[#cc9933] bg-[#ffffcc]" : cardCyanClass}`}
             >
               <div className="flex h-full flex-col">
                 <div className="flex flex-[2] items-start gap-2">
                   <div className="mt-0.5 shrink-0">
-                    <ThumbsUpIcon />
+                    <img src="/LOAM_ThumbsUp_Icon.svg" alt="Today's Jobs" className="h-[2.1875rem] w-[2.1875rem]" />
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">Today&apos;s Jobs</p>
@@ -418,7 +342,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               <div className="flex h-full flex-col">
                 <div className="flex flex-[2] gap-2">
                   <div className="mt-0.5 shrink-0">
-                    <InvoiceIcon />
+                    <img src="/LOAM_Icon.svg" alt="Invoices" className="h-[2.1875rem] w-[2.1875rem]" />
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">Invoices</p>
@@ -439,11 +363,24 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                 setIsWeatherModalOpen(true);
               }}
               disabled={isShiftingWeather}
-              className={`${fixedCardClass} flex items-center ${cardCyanClass} text-[13px] font-semibold text-[#666666] disabled:opacity-70`}
+              className={`${fixedCardClass} ${cardCyanClass} text-[13px] font-semibold text-[#666666] disabled:opacity-70`}
             >
-              <div className="flex items-center gap-2">
-                <WeatherSkipIcon className="h-6 w-6 text-[#287b40]" />
-                <span>{isShiftingWeather ? "Shifting..." : "Weather Day Skip Button"}</span>
+              <div className="flex h-full items-start gap-2">
+                <div className="mt-0.5 shrink-0">
+                  <img src="/LOAM_WeatherSkip_Icon.svg" alt="Weather Day Skip" className="h-[2.1875rem] w-[2.1875rem]" />
+                </div>
+                <div className="pt-0.5 text-left">
+                  <p>{isShiftingWeather ? "Shifting..." : "Weather Day Skip Button"}</p>
+                  {data.weather ? (
+                    <p className="mt-0.5 text-[11px] font-medium text-[#666666]">
+                      <span className="mr-1" aria-hidden="true">
+                        {data.weather.icon}
+                      </span>
+                      {weatherRangeLabel ? `${weatherRangeLabel} ` : ""}
+                      {data.weather.label}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </button>
 
@@ -472,8 +409,9 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
           <div className="relative flex h-full flex-col bg-gradient-to-br from-[#f3faf5] via-[#eef7f1] to-[#e3f1e8] px-4 pb-6 pt-8">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Monthly Revenue</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Rolling 4 Weeks</p>
                 <h2 className="text-2xl font-bold text-[#666666]">Revenue Gap</h2>
+                <p className="mt-1 text-sm text-[#666666]">{data.rollingRevenueWindowLabel}</p>
               </div>
               <button
                 type="button"
@@ -487,49 +425,17 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
             <div className="rounded-3xl border border-[#b0dcc1] bg-white/85 p-4 shadow-lg">
               <div className="h-[44dvh] min-h-[280px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={revenueChartData} margin={{ top: 14, right: 10, left: -20, bottom: 8 }}>
-                    <defs>
-                      <linearGradient id="expectedRevenueAreaExpanded" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#d3e7da" stopOpacity={0.95} />
-                        <stop offset="100%" stopColor="#d3e7da" stopOpacity={0.2} />
-                      </linearGradient>
-                      <linearGradient id="collectedRevenueAreaExpanded" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#2f8a46" stopOpacity={0.8} />
-                        <stop offset="100%" stopColor="#2f8a46" stopOpacity={0.18} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="label"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 12, fill: "#666666" }}
-                      interval={0}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: "#666666" }}
-                      tickFormatter={(value: number) => `$${Number(value).toFixed(0)}`}
-                      domain={[0, revenueChartMax * 1.08]}
-                      width={58}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="expected"
-                      stroke="#a5ccb3"
-                      strokeWidth={2}
-                      fill="url(#expectedRevenueAreaExpanded)"
+                  <PieChart>
+                    <Pie
+                      data={revenuePieData}
+                      dataKey="value"
+                      innerRadius="80%"
+                      outerRadius="100%"
+                      cornerRadius="50%"
+                      paddingAngle={5}
                       isAnimationActive={false}
                     />
-                    <Area
-                      type="monotone"
-                      dataKey="collected"
-                      stroke="#287b40"
-                      strokeWidth={2.4}
-                      fill="url(#collectedRevenueAreaExpanded)"
-                      isAnimationActive={false}
-                    />
-                  </AreaChart>
+                  </PieChart>
                 </ResponsiveContainer>
               </div>
 
@@ -554,6 +460,21 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                     {formatCurrencyFromCents(revenueGap > 0 ? revenueGap : revenueAboveTarget)}
                   </p>
                 </div>
+                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Sent</p>
+                  <p className="text-base font-semibold text-[#666666]">{data.rollingSentInvoiceCount}</p>
+                  <p className="text-xs text-[#666666]">{formatCurrencyFromCents(data.rollingSentInvoiceAmount)}</p>
+                </div>
+                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Unpaid</p>
+                  <p className="text-base font-semibold text-[#666666]">{data.rollingUnpaidInvoiceCount}</p>
+                  <p className="text-xs text-[#666666]">{formatCurrencyFromCents(data.rollingUnpaidInvoiceAmount)}</p>
+                </div>
+                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Overdue</p>
+                  <p className="text-base font-semibold text-[#cc9933]">{data.rollingOverdueInvoiceCount}</p>
+                  <p className="text-xs text-[#666666]">{formatCurrencyFromCents(data.rollingOverdueInvoiceAmount)}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -564,8 +485,8 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/45 px-4 pb-28 pt-10">
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 rounded-full bg-amber-100 p-2 text-amber-700">
-                <WeatherSkipIcon className="h-7 w-7 text-amber-700" />
+              <div className="mt-0.5 rounded-full bg-amber-100 p-2">
+                <img src="/LOAM_WeatherSkip_Icon.svg" alt="Weather Day Skip" className="h-[2.1875rem] w-[2.1875rem]" />
               </div>
               <div>
                 <h2 className="text-base font-semibold text-[#666666]">Skip Today&apos;s Jobs?</h2>

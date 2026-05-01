@@ -4,8 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { SignOutButton } from "@/components/auth/sign-out-button";
+
 const navItems = [
   { href: "/", label: "Dashboard" },
+  { href: "/testspace", label: "Testspace" },
+  { href: "/run", label: "Daily Run" },
   { href: "/clients", label: "Clients" },
   { href: "/properties", label: "Properties" },
   { href: "/service-plans", label: "Service Plans" },
@@ -16,7 +20,7 @@ const navItems = [
 
 const mobilePrimaryNav = [
   { href: "/", label: "Home" },
-  { href: "/service-visits", label: "Visits" },
+  { href: "/run", label: "Run" },
   { href: "/properties", label: "Properties" },
   { href: "/invoices", label: "Invoices" },
   { href: "/clients", label: "Clients" },
@@ -58,6 +62,7 @@ export function TopNav() {
               </Link>
             ))}
           </nav>
+          <SignOutButton className="ml-auto rounded-full border border-emerald-200 bg-white/70 px-3 py-1.5 text-sm text-zinc-700 hover:bg-emerald-50 disabled:opacity-60" />
         </div>
       </header>
 
@@ -106,6 +111,7 @@ export function TopNav() {
                 {item.label}
               </Link>
             ))}
+            <SignOutButton className="mt-2 block w-full rounded-xl border border-emerald-200 bg-white px-3 py-3 text-left text-sm font-semibold text-zinc-800 hover:bg-emerald-50 disabled:opacity-60" />
           </div>
         </div>
       ) : null}

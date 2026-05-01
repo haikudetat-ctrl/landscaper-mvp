@@ -5,10 +5,13 @@ import { redirect } from "next/navigation";
 
 import { createProperty, updateProperty } from "@/lib/db/properties";
 import { maybeString, parseBoolean } from "@/lib/db/shared";
-import { propertyFormSchema } from "@/lib/validation/property";
+import { getConfiguredMapProvider } from "@/lib/maps";
+import { propertyFormSchema, type PropertyFormValues } from "@/lib/validation/property";
 
 export type CreatePropertyFormState = {
   error: string | null;
+  success?: string | null;
+  createdId?: string | null;
 };
 
 function normalizePropertyForm(formData: FormData) {
@@ -27,6 +30,22 @@ function normalizePropertyForm(formData: FormData) {
   };
 }
 
+async function geocodeNewPropertyAddress(values: PropertyFormValues) {
+  if (!process.env.MAPBOX_ACCESS_TOKEN || process.env.NEXT_PUBLIC_MAP_PROVIDER !== "mapbox") {
+    return null;
+  }
+
+  const provider = getConfiguredMapProvider();
+  const address = [values.addressLine1, values.addressLine2, values.city, values.state, values.postalCode].filter(Boolean).join(", ");
+
+  try {
+    // Create-time geocoding keeps Mapbox calls bounded. Do not wire this to every address keystroke.
+    return await provider.geocodeAddress(address);
+  } catch {
+    return null;
+  }
+}
+
 async function createPropertyFromForm(formData: FormData) {
   const parsed = propertyFormSchema.safeParse(normalizePropertyForm(formData));
 
@@ -38,6 +57,7 @@ async function createPropertyFromForm(formData: FormData) {
   }
 
   const values = parsed.data;
+  const geocoded = await geocodeNewPropertyAddress(values);
 
   const created = await createProperty({
     client_id: values.clientId,
@@ -51,6 +71,8 @@ async function createPropertyFromForm(formData: FormData) {
     access_notes: values.accessNotes || null,
     service_notes: values.serviceNotes || null,
     is_active: values.isActive,
+    latitude: geocoded?.latitude ?? null,
+    longitude: geocoded?.longitude ?? null,
   });
 
   revalidatePath("/properties");
@@ -82,7 +104,7 @@ export async function createPropertyActionWithState(
   const result = await createPropertyFromForm(formData);
 
   if (result.error || !result.created) {
-    return { error: result.error ?? "Unable to create property" };
+    return { error: result.error ?? "Unable to create property", success: null, createdId: null };
   }
 
   if (postCreateAction === "add_service_plan") {
@@ -90,6 +112,28 @@ export async function createPropertyActionWithState(
   }
 
   redirect(`/properties/${result.created.id}`);
+}
+
+export async function createPropertySheetAction(
+  _previousState: CreatePropertyFormState,
+  formData: FormData,
+): Promise<CreatePropertyFormState> {
+  const postCreateAction = maybeString(formData.get("postCreateAction"));
+  const result = await createPropertyFromForm(formData);
+
+  if (result.error || !result.created) {
+    return { error: result.error ?? "Unable to create property", success: null, createdId: null };
+  }
+
+  if (postCreateAction === "add_service_plan") {
+    redirect(`/service-plans/new?propertyId=${result.created.id}&onboarding=1`);
+  }
+
+  return {
+    error: null,
+    success: "Property created successfully.",
+    createdId: result.created.id,
+  };
 }
 
 export async function updatePropertyAction(propertyId: string, formData: FormData) {

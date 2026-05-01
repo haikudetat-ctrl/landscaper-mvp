@@ -14,6 +14,7 @@ Copy `.env.example` to `.env.local` and set:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (recommended for server-side writes)
 - `SUPABASE_VISIT_PHOTO_BUCKET` (defaults to `visit-photos`)
+- `OPENWEATHER_API_KEY` (optional, enables dashboard weather for ZIP `08108`)
 
 ## Run
 ```bash

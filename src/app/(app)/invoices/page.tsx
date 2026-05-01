@@ -1,8 +1,6 @@
-import { LinkButton } from "@/components/ui/link-button";
-import { PageHeader } from "@/components/ui/page-header";
-import { listInvoices } from "@/lib/db/invoices";
+import { listCompletedVisitsMissingInvoice, listInvoices } from "@/lib/db/invoices";
 
-import { InvoiceDashboard } from "./invoice-dashboard";
+import { InvoicesPageShell } from "./invoices-page-shell";
 
 export default async function InvoicesPage({
   searchParams,
@@ -10,17 +8,9 @@ export default async function InvoicesPage({
   searchParams: Promise<{ q?: string; status?: string }>;
 }) {
   const params = await searchParams;
-  const invoices = await listInvoices();
+  const [invoices, rows] = await Promise.all([listInvoices(), listCompletedVisitsMissingInvoice()]);
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Invoices"
-        description="Track invoice balances and manual payments."
-        actions={<LinkButton href="/invoices/new" label="Create from completed visit" />}
-      />
-
-      <InvoiceDashboard invoices={invoices} initialQuery={params.q ?? ""} initialStatus={params.status ?? ""} />
-    </div>
+    <InvoicesPageShell invoices={invoices} rows={rows} initialQuery={params.q ?? ""} initialStatus={params.status ?? ""} />
   );
 }

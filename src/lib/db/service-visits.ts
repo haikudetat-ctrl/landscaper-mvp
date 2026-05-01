@@ -145,7 +145,9 @@ export async function markVisitSkipped(id: string, reason: string, note: string 
 
 export async function markVisitPendingReactivation(id: string) {
   return updateServiceVisit(id, {
+    status: "pending_reactivation",
     reactivation_required: true,
+    completion_timestamp: null,
   });
 }
 

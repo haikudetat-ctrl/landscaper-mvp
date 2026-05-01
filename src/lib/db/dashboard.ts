@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Views } from "@/lib/types/database";
 import { throwDbError } from "@/lib/db/shared";
+import { getDashboardWeather } from "@/lib/weather/openweather";
 
 export type DashboardData = {
   todayJobs: Views<"v_today_jobs">[];
@@ -16,6 +17,13 @@ export type DashboardData = {
   mobile: {
     expectedMonthlyRevenue: number;
     collectedMoneyThisMonth: number;
+    rollingRevenueWindowLabel: string;
+    rollingSentInvoiceCount: number;
+    rollingSentInvoiceAmount: number;
+    rollingUnpaidInvoiceCount: number;
+    rollingUnpaidInvoiceAmount: number;
+    rollingOverdueInvoiceCount: number;
+    rollingOverdueInvoiceAmount: number;
     monthlyCompletedJobs: number;
     monthlyTotalJobs: number;
     todayCompletedJobs: number;
@@ -37,18 +45,46 @@ export type DashboardData = {
       state: string | null;
       postal_code: string | null;
     } | null;
+    weather: {
+      icon: string;
+      label: string;
+      tempLow: number | null;
+      tempHigh: number | null;
+    } | null;
   };
 };
+
+function toLocalDateString(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = createSupabaseServerClient();
   const now = new Date();
   const monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
   const nextMonthStartDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const rollingRevenueStartDate = new Date(now);
+  rollingRevenueStartDate.setDate(rollingRevenueStartDate.getDate() - 14);
+  const rollingRevenueEndExclusiveDate = new Date(now);
+  rollingRevenueEndExclusiveDate.setDate(rollingRevenueEndExclusiveDate.getDate() + 14);
+  const rollingRevenueDisplayEndDate = new Date(rollingRevenueEndExclusiveDate);
+  rollingRevenueDisplayEndDate.setDate(rollingRevenueDisplayEndDate.getDate() - 1);
 
   const monthStart = monthStartDate.toISOString().slice(0, 10);
   const nextMonthStart = nextMonthStartDate.toISOString().slice(0, 10);
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const rollingRevenueStart = toLocalDateString(rollingRevenueStartDate);
+  const rollingRevenueEndExclusive = toLocalDateString(rollingRevenueEndExclusiveDate);
+  const today = toLocalDateString(now);
+  const rollingRevenueWindowLabel = `${new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(rollingRevenueStartDate)} - ${new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(rollingRevenueDisplayEndDate)}`;
 
   const [
     todayJobsResult,
@@ -58,9 +94,13 @@ export async function getDashboardData(): Promise<DashboardData> {
     skippedResult,
     missingNextResult,
     monthlyVisitsResult,
-    monthlyPaymentsResult,
+    rollingRevenueVisitsResult,
+    rollingRevenuePaymentsResult,
+    rollingInvoicesResult,
+    rollingInvoiceBalancesResult,
     nextJobResult,
     todayBacklogResult,
+    weatherSnapshot,
   ] = await Promise.all([
     supabase.from("v_today_jobs").select("*").order("scheduled_date", { ascending: true }),
     supabase
@@ -83,10 +123,25 @@ export async function getDashboardData(): Promise<DashboardData> {
       .gte("scheduled_date", monthStart)
       .lt("scheduled_date", nextMonthStart),
     supabase
+      .from("service_visits")
+      .select("id, status, quoted_price, scheduled_date")
+      .gte("scheduled_date", rollingRevenueStart)
+      .lt("scheduled_date", rollingRevenueEndExclusive),
+    supabase
       .from("payments")
       .select("amount")
-      .gte("payment_date", monthStart)
-      .lt("payment_date", nextMonthStart),
+      .gte("payment_date", rollingRevenueStart)
+      .lt("payment_date", rollingRevenueEndExclusive),
+    supabase
+      .from("invoices")
+      .select("id, amount_due, invoice_date, email_sent_at")
+      .gte("invoice_date", rollingRevenueStart)
+      .lt("invoice_date", rollingRevenueEndExclusive),
+    supabase
+      .from("v_invoice_balances")
+      .select("invoice_id, invoice_date, due_date, amount_remaining")
+      .gte("invoice_date", rollingRevenueStart)
+      .lt("invoice_date", rollingRevenueEndExclusive),
     supabase
       .from("service_visits")
       .select("id, property_id, quoted_price, scheduled_date, status, properties(street_1, city, state, postal_code)")
@@ -97,6 +152,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     supabase.rpc("list_today_visits_with_missed_backlog", {
       p_target_date: today,
     }),
+    getDashboardWeather(),
   ]);
 
   throwDbError(todayJobsResult.error, "Failed to load today's jobs");
@@ -106,7 +162,10 @@ export async function getDashboardData(): Promise<DashboardData> {
   throwDbError(skippedResult.error, "Failed to load skipped visits");
   throwDbError(missingNextResult.error, "Failed to load properties missing next service");
   throwDbError(monthlyVisitsResult.error, "Failed to load monthly visit metrics");
-  throwDbError(monthlyPaymentsResult.error, "Failed to load monthly payment metrics");
+  throwDbError(rollingRevenueVisitsResult.error, "Failed to load rolling revenue visit metrics");
+  throwDbError(rollingRevenuePaymentsResult.error, "Failed to load rolling revenue payment metrics");
+  throwDbError(rollingInvoicesResult.error, "Failed to load rolling invoice metrics");
+  throwDbError(rollingInvoiceBalancesResult.error, "Failed to load rolling invoice balance metrics");
   throwDbError(nextJobResult.error, "Failed to load next job");
   throwDbError(todayBacklogResult.error, "Failed to load missed appointment backlog");
 
@@ -123,19 +182,35 @@ export async function getDashboardData(): Promise<DashboardData> {
   }, 0);
 
   const monthlyVisits = monthlyVisitsResult.data ?? [];
-  const monthlyPayments = monthlyPaymentsResult.data ?? [];
-  const revenueEligibleStatuses = new Set(["scheduled", "rescheduled", "pending_reactivation"]);
+  const rollingRevenuePayments = rollingRevenuePaymentsResult.data ?? [];
+  const rollingInvoices = rollingInvoicesResult.data ?? [];
+  const rollingInvoiceBalances = rollingInvoiceBalancesResult.data ?? [];
 
   const monthlyTotalJobs = monthlyVisits.filter((visit) => visit.status !== "canceled").length;
   const monthlyCompletedJobs = monthlyVisits.filter((visit) => visit.status === "completed").length;
-  const expectedMonthlyRevenue = monthlyVisits.reduce((sum, visit) => {
-    if (!visit.scheduled_date || visit.scheduled_date < today) return sum;
-    if (!revenueEligibleStatuses.has(visit.status)) return sum;
-    return sum + (typeof visit.quoted_price === "number" ? visit.quoted_price : 0);
-  }, 0);
-  const collectedMoneyThisMonth = monthlyPayments.reduce((sum, payment) => {
+  const collectedMoneyThisMonth = rollingRevenuePayments.reduce((sum, payment) => {
     return sum + (typeof payment.amount === "number" ? payment.amount : 0);
   }, 0);
+  const rollingSentInvoices = rollingInvoices.filter((invoice) => Boolean(invoice.email_sent_at));
+  const rollingSentInvoiceCount = rollingSentInvoices.length;
+  const rollingSentInvoiceAmount = rollingSentInvoices.reduce((sum, invoice) => {
+    return sum + (typeof invoice.amount_due === "number" ? invoice.amount_due : 0);
+  }, 0);
+  const rollingUnpaidInvoices = rollingInvoiceBalances.filter((invoice) => {
+    return typeof invoice.amount_remaining === "number" && invoice.amount_remaining > 0;
+  });
+  const rollingOverdueInvoices = rollingUnpaidInvoices.filter((invoice) => {
+    return Boolean(invoice.due_date && invoice.due_date < today);
+  });
+  const rollingOverdueInvoiceCount = rollingOverdueInvoices.length;
+  const rollingOverdueInvoiceAmount = rollingOverdueInvoices.reduce((sum, invoice) => {
+    return sum + (typeof invoice.amount_remaining === "number" ? invoice.amount_remaining : 0);
+  }, 0);
+  const rollingUnpaidInvoiceCount = rollingUnpaidInvoices.length;
+  const rollingUnpaidInvoiceAmount = rollingUnpaidInvoices.reduce((sum, invoice) => {
+    return sum + (typeof invoice.amount_remaining === "number" ? invoice.amount_remaining : 0);
+  }, 0);
+  const expectedMonthlyRevenue = collectedMoneyThisMonth + rollingUnpaidInvoiceAmount;
 
   const todayJobs = todayJobsResult.data ?? [];
   const todayBacklogRows = todayBacklogResult.data ?? [];
@@ -181,6 +256,13 @@ export async function getDashboardData(): Promise<DashboardData> {
     mobile: {
       expectedMonthlyRevenue,
       collectedMoneyThisMonth,
+      rollingRevenueWindowLabel,
+      rollingSentInvoiceCount,
+      rollingSentInvoiceAmount,
+      rollingUnpaidInvoiceCount,
+      rollingUnpaidInvoiceAmount,
+      rollingOverdueInvoiceCount,
+      rollingOverdueInvoiceAmount,
       monthlyCompletedJobs,
       monthlyTotalJobs,
       todayCompletedJobs,
@@ -198,6 +280,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       unpaidInvoiceCount: balances.length,
       unpaidAmount: amountRemaining,
       nextJob,
+      weather: weatherSnapshot,
     },
   };
 }

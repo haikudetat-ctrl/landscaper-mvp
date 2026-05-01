@@ -9,6 +9,8 @@ import { clientFormSchema } from "@/lib/validation/client";
 
 export type CreateClientFormState = {
   error: string | null;
+  success?: string | null;
+  createdId?: string | null;
 };
 
 function normalizeClientForm(formData: FormData) {
@@ -85,7 +87,7 @@ export async function createClientActionWithState(
   const result = await createClientFromForm(formData);
 
   if (result.error || !result.created) {
-    return { error: result.error ?? "Unable to create client" };
+    return { error: result.error ?? "Unable to create client", success: null, createdId: null };
   }
 
   if (postCreateAction === "add_property") {
@@ -93,6 +95,28 @@ export async function createClientActionWithState(
   }
 
   redirect(`/clients/${result.created.id}`);
+}
+
+export async function createClientSheetAction(
+  _previousState: CreateClientFormState,
+  formData: FormData,
+): Promise<CreateClientFormState> {
+  const postCreateAction = maybeString(formData.get("postCreateAction"));
+  const result = await createClientFromForm(formData);
+
+  if (result.error || !result.created) {
+    return { error: result.error ?? "Unable to create client", success: null, createdId: null };
+  }
+
+  if (postCreateAction === "add_property") {
+    redirect(`/properties/new?clientId=${result.created.id}&onboarding=1`);
+  }
+
+  return {
+    error: null,
+    success: "Client created successfully.",
+    createdId: result.created.id,
+  };
 }
 
 export async function updateClientAction(clientId: string, formData: FormData) {

@@ -14,6 +14,8 @@ import { servicePlanFormSchema } from "@/lib/validation/service-plan";
 
 export type CreateServicePlanFormState = {
   error: string | null;
+  success?: string | null;
+  createdId?: string | null;
 };
 
 function mapFrequency(value: string): string {
@@ -88,10 +90,27 @@ export async function createServicePlanActionWithState(
   const result = await createServicePlanFromForm(formData);
 
   if (result.error || !result.created) {
-    return { error: result.error ?? "Unable to create service plan" };
+    return { error: result.error ?? "Unable to create service plan", success: null, createdId: null };
   }
 
   redirect(`/service-plans/${result.created.id}`);
+}
+
+export async function createServicePlanSheetAction(
+  _previousState: CreateServicePlanFormState,
+  formData: FormData,
+): Promise<CreateServicePlanFormState> {
+  const result = await createServicePlanFromForm(formData);
+
+  if (result.error || !result.created) {
+    return { error: result.error ?? "Unable to create service plan", success: null, createdId: null };
+  }
+
+  return {
+    error: null,
+    success: "Service plan created successfully.",
+    createdId: result.created.id,
+  };
 }
 
 export async function updateServicePlanAction(planId: string, formData: FormData) {

@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useCallback } from "react";
+import { useActionState, useCallback, useEffect, useRef } from "react";
 
 import type { Tables } from "@/lib/types/database";
-import { FormField, FormRow, checkboxClasses, inputClasses, selectClasses, textareaClasses } from "@/components/ui/forms";
+import { FormField, FormRow, checkboxClasses, inputClasses, textareaClasses } from "@/components/ui/forms";
+import { SearchSelect } from "@/components/ui/search-select";
 import { SubmitButton } from "@/components/ui/submit-button";
+import type { CreatePropertyFormState } from "@/app/(app)/properties/actions";
 
 type ClientOption = Pick<Tables<"clients">, "id" | "full_name">;
 type PropertyDefaultValue = Pick<
@@ -22,8 +24,6 @@ type PropertyDefaultValue = Pick<
   | "is_active"
 >;
 
-type FormState = { error: string | null };
-
 export function PropertyForm({
   action,
   stateAction,
@@ -33,23 +33,51 @@ export function PropertyForm({
   submitLabel,
   showCreateAndAddPlanButton = false,
   requiredFieldsNote,
+  onSuccess,
+  resetOnSuccess = false,
+  className,
 }: {
   action: (formData: FormData) => Promise<void>;
-  stateAction?: (previousState: FormState, formData: FormData) => Promise<FormState>;
+  stateAction?: (previousState: CreatePropertyFormState, formData: FormData) => Promise<CreatePropertyFormState>;
   clients: ClientOption[];
   defaultValue?: PropertyDefaultValue;
   initialClientId?: string;
   submitLabel: string;
   showCreateAndAddPlanButton?: boolean;
   requiredFieldsNote?: string;
+  onSuccess?: (state: CreatePropertyFormState) => void;
+  resetOnSuccess?: boolean;
+  className?: string;
 }) {
-  const noStateAction = useCallback(async (previousState: FormState) => previousState, []);
-  const [state, stateFormAction] = useActionState<FormState, FormData>(stateAction ?? noStateAction, {
+  const formRef = useRef<HTMLFormElement>(null);
+  const lastHandledCreatedIdRef = useRef<string | null>(null);
+  const noStateAction = useCallback(async (previousState: CreatePropertyFormState) => previousState, []);
+  const [state, stateFormAction] = useActionState<CreatePropertyFormState, FormData>(stateAction ?? noStateAction, {
     error: null,
+    success: null,
+    createdId: null,
   });
 
+  useEffect(() => {
+    if (!state.createdId || lastHandledCreatedIdRef.current === state.createdId) {
+      return;
+    }
+
+    lastHandledCreatedIdRef.current = state.createdId;
+
+    if (resetOnSuccess) {
+      formRef.current?.reset();
+    }
+
+    onSuccess?.(state);
+  }, [onSuccess, resetOnSuccess, state]);
+
   return (
-    <form action={stateAction ? stateFormAction : action} className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+    <form
+      ref={formRef}
+      action={stateAction ? stateFormAction : action}
+      className={`space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm ${className ?? ""}`}
+    >
       {requiredFieldsNote ? (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs font-medium text-zinc-700">
           {requiredFieldsNote}
@@ -57,20 +85,17 @@ export function PropertyForm({
       ) : null}
 
       <FormField label="Client" name="clientId" required>
-        <select
-          id="clientId"
+        <SearchSelect
           name="clientId"
-          defaultValue={defaultValue?.client_id ?? initialClientId ?? ""}
-          className={selectClasses()}
           required
-        >
-          <option value="">Select client</option>
-          {clients.map((client) => (
-            <option key={client.id} value={client.id}>
-              {client.full_name}
-            </option>
-          ))}
-        </select>
+          defaultValue={defaultValue?.client_id ?? initialClientId ?? ""}
+          placeholder="Search clients..."
+          emptyMessage="No clients match that search."
+          options={clients.map((client) => ({
+            id: client.id,
+            label: client.full_name,
+          }))}
+        />
       </FormField>
 
       <FormField label="Property name" name="propertyName">

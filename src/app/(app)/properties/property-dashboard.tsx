@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { MapboxRouteMap } from "@/components/maps/mapbox-route-map";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusPill } from "@/components/ui/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
+import { buildExternalNavigationLinks } from "@/lib/maps/navigation";
 import { formatAddress } from "@/lib/utils/format";
 
 type ClientRelation = {
@@ -32,7 +34,10 @@ export type PropertyDashboardRecord = {
 };
 
 type RouteResult = {
+  provider?: "mapbox" | "osm";
+  orderedStops?: Array<{ id: string; latitude: number; longitude: number; label?: string | null; address?: string | null }>;
   route: Array<{ latitude: number; longitude: number }>;
+  geometry?: GeoJSON.LineString | null;
   summary: { distance?: number; duration?: number } | null;
 };
 
@@ -103,16 +108,18 @@ function durationLabel(seconds?: number) {
 
 export function PropertyDashboard({
   properties,
+  mapProvider,
   mapboxToken,
   canRoute,
 }: {
   properties: PropertyDashboardRecord[];
+  mapProvider: MapStyle;
   mapboxToken?: string;
   canRoute: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const [mapStyle, setMapStyle] = useState<MapStyle>(mapboxToken ? "mapbox" : "osm");
+  const [mapStyle, setMapStyle] = useState<MapStyle>(mapProvider === "mapbox" && mapboxToken ? "mapbox" : "osm");
   const [selectedId, setSelectedId] = useState<string | null>(properties[0]?.id ?? null);
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
@@ -201,6 +208,21 @@ export function PropertyDashboard({
       .join(" ");
   }, [center, routeResult, zoom]);
 
+  const mapStops = useMemo(
+    () =>
+      mappableProperties.map((property) => ({
+        id: property.id,
+        label: property.property_name ?? getClientName(property),
+        address: formatAddress(property),
+        latitude: property.latitude,
+        longitude: property.longitude,
+      })),
+    [mappableProperties],
+  );
+
+  const orderedNavigationStops = routeResult?.orderedStops?.length ? routeResult.orderedStops : mapStops;
+  const navigationLinks = buildExternalNavigationLinks({ stops: orderedNavigationStops });
+
   async function createRoute() {
     setRouteError(null);
     setRouteResult(null);
@@ -209,6 +231,9 @@ export function PropertyDashboard({
       .filter(isMappable)
       .slice(0, 12)
       .map((property) => ({
+        id: property.id,
+        label: property.property_name ?? getClientName(property),
+        address: formatAddress(property),
         latitude: property.latitude ?? 0,
         longitude: property.longitude ?? 0,
       }));
@@ -224,7 +249,7 @@ export function PropertyDashboard({
       const response = await fetch("/api/properties/route-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coordinates }),
+        body: JSON.stringify({ stops: coordinates }),
       });
 
       const result = (await response.json()) as RouteResult | { error?: string };
@@ -268,7 +293,7 @@ export function PropertyDashboard({
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 p-3">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Property map</h2>
-              <p className="mt-1 text-xs text-zinc-500">OpenStreetMap tiles by default, Mapbox outdoors when configured.</p>
+              <p className="mt-1 text-xs text-zinc-500">OpenStreetMap is preserved; Mapbox GL renders when configured.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -296,52 +321,64 @@ export function PropertyDashboard({
                 disabled={!canRoute || isRouting}
                 className="rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {isRouting ? "Routing..." : "ORS route"}
+                {isRouting ? "Optimizing..." : "Optimize route"}
               </button>
             </div>
           </div>
 
           <div className="relative h-[520px] min-h-[520px] overflow-hidden bg-[#dbe8dc]">
-            {visibleTiles.map((tile) => (
-              // External map tiles are deliberately rendered as raw images; Next image optimization is not useful for XYZ tiles.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={tile.key}
-                alt=""
-                src={tileUrl(mapStyle, tile.x, tile.y, zoom, mapboxToken)}
-                className="absolute h-64 w-64 select-none"
-                draggable={false}
-                style={{ left: tile.left, top: tile.top }}
+            {mapStyle === "mapbox" && mapboxToken ? (
+              <MapboxRouteMap
+                accessToken={mapboxToken}
+                center={center}
+                stops={mapStops}
+                route={routeResult?.geometry ?? null}
+                activeStopId={selectedProperty?.id ?? null}
               />
-            ))}
+            ) : (
+              <>
+                {visibleTiles.map((tile) => (
+                  // External map tiles are deliberately rendered as raw images; Next image optimization is not useful for XYZ tiles.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={tile.key}
+                    alt=""
+                    src={tileUrl(mapStyle, tile.x, tile.y, zoom, mapboxToken)}
+                    className="absolute h-64 w-64 select-none"
+                    draggable={false}
+                    style={{ left: tile.left, top: tile.top }}
+                  />
+                ))}
 
-            <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              {routePath ? <path d={routePath} fill="none" stroke="#111827" strokeLinecap="round" strokeWidth="0.55" /> : null}
-            </svg>
+                <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  {routePath ? <path d={routePath} fill="none" stroke="#111827" strokeLinecap="round" strokeWidth="0.55" /> : null}
+                </svg>
 
-            {mappableProperties.map((property) => {
-              const point = projectPoint(
-                { latitude: property.latitude, longitude: property.longitude },
-                center,
-                zoom,
-              );
-              const isSelected = selectedProperty?.id === property.id;
+                {mappableProperties.map((property) => {
+                  const point = projectPoint(
+                    { latitude: property.latitude, longitude: property.longitude },
+                    center,
+                    zoom,
+                  );
+                  const isSelected = selectedProperty?.id === property.id;
 
-              return (
-                <button
-                  key={property.id}
-                  type="button"
-                  onClick={() => setSelectedId(property.id)}
-                  className={`absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-xs font-bold shadow-md ${
-                    isSelected ? "border-zinc-950 bg-zinc-950 text-white" : "border-white bg-emerald-600 text-white"
-                  }`}
-                  style={{ left: `${point.x}%`, top: `${point.y}%` }}
-                  title={formatAddress(property)}
-                >
-                  {isSelected ? "•" : ""}
-                </button>
-              );
-            })}
+                  return (
+                    <button
+                      key={property.id}
+                      type="button"
+                      onClick={() => setSelectedId(property.id)}
+                      className={`absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 text-xs font-bold shadow-md ${
+                        isSelected ? "border-zinc-950 bg-zinc-950 text-white" : "border-white bg-emerald-600 text-white"
+                      }`}
+                      style={{ left: `${point.x}%`, top: `${point.y}%` }}
+                      title={formatAddress(property)}
+                    >
+                      {isSelected ? "•" : ""}
+                    </button>
+                  );
+                })}
+              </>
+            )}
 
             {mappableProperties.length === 0 ? (
               <div className="absolute inset-4 flex items-center justify-center rounded-2xl border border-emerald-200 bg-white/90 p-6 text-center">
@@ -363,9 +400,34 @@ export function PropertyDashboard({
               {routeError ? (
                 <p className="font-semibold text-amber-700">{routeError}</p>
               ) : (
-                <p className="font-semibold text-zinc-800">
-                  ORS route: {currencyDistance(routeResult?.summary?.distance)} · {durationLabel(routeResult?.summary?.duration)}
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold text-zinc-800">
+                    {routeResult?.provider === "mapbox" ? "Mapbox optimized route" : "Route"}:{" "}
+                    {currencyDistance(routeResult?.summary?.distance)} · {durationLabel(routeResult?.summary?.duration)}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {navigationLinks.googleMapsUrl ? (
+                      <a
+                        href={navigationLinks.googleMapsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-emerald-50"
+                      >
+                        Google Maps
+                      </a>
+                    ) : null}
+                    {navigationLinks.nextStopAppleMapsUrl ? (
+                      <a
+                        href={navigationLinks.nextStopAppleMapsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-zinc-800 hover:bg-emerald-50"
+                      >
+                        Apple next stop
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
               )}
             </div>
           ) : null}

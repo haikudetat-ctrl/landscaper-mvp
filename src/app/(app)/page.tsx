@@ -51,7 +51,19 @@ export default async function DashboardPage() {
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">
-        <SectionCard title="Today&apos;s Jobs" right={<Link className="text-sm text-zinc-600 underline" href="/service-visits">Open visits</Link>}>
+        <SectionCard
+          title="Today&apos;s Jobs"
+          right={
+            <div className="flex gap-3">
+              <Link className="text-sm text-zinc-600 underline" href="/run">
+                Daily run
+              </Link>
+              <Link className="text-sm text-zinc-600 underline" href="/service-visits">
+                Open visits
+              </Link>
+            </div>
+          }
+        >
           {data.todayJobs.length === 0 ? (
             <EmptyState title="No jobs scheduled for today" />
           ) : (

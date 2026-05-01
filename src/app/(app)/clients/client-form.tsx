@@ -1,13 +1,12 @@
 "use client";
 
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 
 import type { Tables } from "@/lib/types/database";
 
 import { FormField, FormRow, checkboxClasses, inputClasses, textareaClasses } from "@/components/ui/forms";
 import { SubmitButton } from "@/components/ui/submit-button";
-
-type FormState = { error: string | null };
+import type { CreateClientFormState } from "@/app/(app)/clients/actions";
 
 export function ClientForm({
   action,
@@ -16,22 +15,47 @@ export function ClientForm({
   submitLabel,
   showCreateAndAddPropertyButton = false,
   requiredFieldsNote,
+  onSuccess,
+  resetOnSuccess = false,
+  className,
 }: {
   action: (formData: FormData) => Promise<void>;
-  stateAction?: (previousState: FormState, formData: FormData) => Promise<FormState>;
+  stateAction?: (previousState: CreateClientFormState, formData: FormData) => Promise<CreateClientFormState>;
   defaultValue?: Tables<"clients">;
   submitLabel: string;
   showCreateAndAddPropertyButton?: boolean;
   requiredFieldsNote?: string;
+  onSuccess?: (state: CreateClientFormState) => void;
+  resetOnSuccess?: boolean;
+  className?: string;
 }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const lastHandledCreatedIdRef = useRef<string | null>(null);
   const [clientNameError, setClientNameError] = useState<string | null>(null);
-  const noStateAction = useCallback(async (previousState: FormState) => previousState, []);
-  const [state, stateFormAction] = useActionState<FormState, FormData>(stateAction ?? noStateAction, {
+  const noStateAction = useCallback(async (previousState: CreateClientFormState) => previousState, []);
+  const [state, stateFormAction] = useActionState<CreateClientFormState, FormData>(stateAction ?? noStateAction, {
     error: null,
+    success: null,
+    createdId: null,
   });
+
+  useEffect(() => {
+    if (!state.createdId || lastHandledCreatedIdRef.current === state.createdId) {
+      return;
+    }
+
+    lastHandledCreatedIdRef.current = state.createdId;
+
+    if (resetOnSuccess) {
+      formRef.current?.reset();
+    }
+
+    onSuccess?.(state);
+  }, [onSuccess, resetOnSuccess, state]);
 
   return (
     <form
+      ref={formRef}
       action={stateAction ? stateFormAction : action}
       onSubmit={(event) => {
         setClientNameError(null);
@@ -45,7 +69,7 @@ export function ClientForm({
           setClientNameError("Provide Client display name or both first and last name.");
         }
       }}
-      className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm"
+      className={`space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm ${className ?? ""}`}
     >
       {requiredFieldsNote ? (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs font-medium text-zinc-700">

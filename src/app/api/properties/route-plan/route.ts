@@ -1,25 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getConfiguredMapProvider } from "@/lib/maps";
+import type { MapStop } from "@/lib/maps/types";
+
+const coordinateSchema = z.object({
+  id: z.string().optional(),
+  label: z.string().optional(),
+  address: z.string().optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+
 const routePlanSchema = z.object({
-  coordinates: z
-    .array(
-      z.object({
-        latitude: z.number().min(-90).max(90),
-        longitude: z.number().min(-180).max(180),
-      }),
-    )
-    .min(2)
-    .max(25),
+  coordinates: z.array(coordinateSchema).min(2).max(25).optional(),
+  start: coordinateSchema.optional(),
+  stops: z.array(coordinateSchema).min(1).max(25).optional(),
+  end: coordinateSchema.optional(),
 });
 
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENROUTESERVICE_API_KEY;
-
-  if (!apiKey) {
-    return NextResponse.json({ error: "OpenRouteService API key is not configured." }, { status: 501 });
-  }
-
   let payload: unknown;
 
   try {
@@ -34,37 +34,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Route payload is invalid." }, { status: 400 });
   }
 
-  const response = await fetch("https://api.openrouteservice.org/v2/directions/driving-car/geojson", {
-    method: "POST",
-    headers: {
-      Authorization: apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      coordinates: parsed.data.coordinates.map((coordinate) => [coordinate.longitude, coordinate.latitude]),
-    }),
-  });
+  const coordinates = parsed.data.coordinates;
+  const stops = parsed.data.stops ?? coordinates;
 
-  if (!response.ok) {
-    return NextResponse.json({ error: "OpenRouteService could not generate a route." }, { status: response.status });
+  if (!stops?.length) {
+    return NextResponse.json({ error: "At least one route stop is required." }, { status: 400 });
   }
 
-  const data = (await response.json()) as {
-    features?: Array<{
-      geometry?: { coordinates?: number[][] };
-      properties?: { summary?: { distance?: number; duration?: number } };
-    }>;
-  };
-
-  const feature = data.features?.[0];
-  const coordinates = feature?.geometry?.coordinates;
-
-  if (!coordinates) {
-    return NextResponse.json({ error: "OpenRouteService returned no route geometry." }, { status: 502 });
-  }
-
-  return NextResponse.json({
-    route: coordinates.map(([longitude, latitude]) => ({ latitude, longitude })),
-    summary: feature.properties?.summary ?? null,
+  const provider = getConfiguredMapProvider();
+  const toStop = (coordinate: z.infer<typeof coordinateSchema>, index: number): MapStop => ({
+    id: coordinate.id ?? `stop-${index + 1}`,
+    label: coordinate.label,
+    address: coordinate.address,
+    latitude: coordinate.latitude,
+    longitude: coordinate.longitude,
   });
+
+  try {
+    const optimizedRoute = await provider.optimizeRoute({
+      start: parsed.data.start ? toStop(parsed.data.start, 0) : undefined,
+      stops: stops.map(toStop),
+      end: parsed.data.end ? toStop(parsed.data.end, stops.length + 1) : undefined,
+    });
+
+    return NextResponse.json({
+      provider: optimizedRoute.provider,
+      orderedStops: optimizedRoute.orderedStops,
+      route: optimizedRoute.route,
+      geometry: optimizedRoute.geometry,
+      summary: {
+        distance: optimizedRoute.distance ?? undefined,
+        duration: optimizedRoute.duration ?? undefined,
+      },
+      providerMetadata: optimizedRoute.providerMetadata,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to generate route." },
+      { status: provider.name === "mapbox" && !process.env.MAPBOX_ACCESS_TOKEN ? 501 : 502 },
+    );
+  }
 }

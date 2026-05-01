@@ -1,13 +1,15 @@
 "use client";
 
-import { useActionState, useCallback } from "react";
+import { useActionState, useCallback, useEffect, useRef } from "react";
 
 import type { Tables } from "@/lib/types/database";
 import { planFrequencies, planStatuses } from "@/lib/utils/constants";
 import { formatAddress } from "@/lib/utils/format";
 
 import { FormField, FormRow, inputClasses, selectClasses, textareaClasses } from "@/components/ui/forms";
+import { SearchSelect } from "@/components/ui/search-select";
 import { SubmitButton } from "@/components/ui/submit-button";
+import type { CreateServicePlanFormState } from "@/app/(app)/service-plans/actions";
 
 type PropertyOption = Pick<
   Tables<"properties">,
@@ -30,8 +32,6 @@ type ServicePlanDefaultValue = Pick<
   | "notes"
 >;
 
-type FormState = { error: string | null };
-
 export function ServicePlanForm({
   action,
   stateAction,
@@ -41,23 +41,51 @@ export function ServicePlanForm({
   initialPropertyId,
   submitLabel,
   requiredFieldsNote,
+  onSuccess,
+  resetOnSuccess = false,
+  className,
 }: {
   action: (formData: FormData) => Promise<void>;
-  stateAction?: (previousState: FormState, formData: FormData) => Promise<FormState>;
+  stateAction?: (previousState: CreateServicePlanFormState, formData: FormData) => Promise<CreateServicePlanFormState>;
   properties: PropertyOption[];
   serviceTypes: ServiceTypeOption[];
   defaultValue?: ServicePlanDefaultValue;
   initialPropertyId?: string;
   submitLabel: string;
   requiredFieldsNote?: string;
+  onSuccess?: (state: CreateServicePlanFormState) => void;
+  resetOnSuccess?: boolean;
+  className?: string;
 }) {
-  const noStateAction = useCallback(async (previousState: FormState) => previousState, []);
-  const [state, stateFormAction] = useActionState<FormState, FormData>(stateAction ?? noStateAction, {
+  const formRef = useRef<HTMLFormElement>(null);
+  const lastHandledCreatedIdRef = useRef<string | null>(null);
+  const noStateAction = useCallback(async (previousState: CreateServicePlanFormState) => previousState, []);
+  const [state, stateFormAction] = useActionState<CreateServicePlanFormState, FormData>(stateAction ?? noStateAction, {
     error: null,
+    success: null,
+    createdId: null,
   });
 
+  useEffect(() => {
+    if (!state.createdId || lastHandledCreatedIdRef.current === state.createdId) {
+      return;
+    }
+
+    lastHandledCreatedIdRef.current = state.createdId;
+
+    if (resetOnSuccess) {
+      formRef.current?.reset();
+    }
+
+    onSuccess?.(state);
+  }, [onSuccess, resetOnSuccess, state]);
+
   return (
-    <form action={stateAction ? stateFormAction : action} className="space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+    <form
+      ref={formRef}
+      action={stateAction ? stateFormAction : action}
+      className={`space-y-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm ${className ?? ""}`}
+    >
       {requiredFieldsNote ? (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs font-medium text-zinc-700">
           {requiredFieldsNote}
@@ -65,20 +93,18 @@ export function ServicePlanForm({
       ) : null}
 
       <FormField label="Property" name="propertyId" required>
-        <select
-          id="propertyId"
+        <SearchSelect
           name="propertyId"
-          defaultValue={defaultValue?.property_id ?? initialPropertyId ?? ""}
-          className={selectClasses()}
           required
-        >
-          <option value="">Select property</option>
-          {properties.map((property) => (
-            <option key={property.id} value={property.id}>
-              {formatAddress(property)}
-            </option>
-          ))}
-        </select>
+          defaultValue={defaultValue?.property_id ?? initialPropertyId ?? ""}
+          placeholder="Search properties..."
+          emptyMessage="No properties match that search."
+          options={properties.map((property) => ({
+            id: property.id,
+            label: formatAddress(property),
+            keywords: [property.street_1, property.city, property.state, property.postal_code].filter(Boolean).join(" "),
+          }))}
+        />
       </FormField>
 
       <FormRow>
