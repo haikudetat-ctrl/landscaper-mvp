@@ -22,7 +22,7 @@ export function Testspace({ previewVisit }: { previewVisit: DailyRunVisit | null
     offsetRotate: "auto 90deg",
     WebkitOffsetPath: `path("${mowerPath}")`,
     WebkitOffsetRotate: "auto 90deg",
-  } as CSSProperties;
+  } as unknown as CSSProperties;
 
   useEffect(() => {
     const controls = animate(progress, 1, {
