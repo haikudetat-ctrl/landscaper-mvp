@@ -1,6 +1,8 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Views } from "@/lib/types/database";
 import { throwDbError } from "@/lib/db/shared";
+import type { DailyRunStateRow } from "@/lib/db/run-state";
+import { getTodayRunState } from "@/lib/db/run-state";
 
 export type DailyRunVisit = {
   service_visit_id: string | null;
@@ -61,6 +63,7 @@ export type DailyRunData = {
   visits: DailyRunVisit[];
   collections: CollectionInvoice[];
   photosAttachedToday: number;
+  savedRunState: DailyRunStateRow | null;
 };
 
 function localDate(offsetDays = 0) {
@@ -198,6 +201,7 @@ export async function getDailyRunData(): Promise<DailyRunData> {
   const skippedVisits = yesterdayVisits.filter((visit) => visit.status === "skipped");
   const collections = collectionsResult.data ?? [];
   const pendingCollectionsAmount = collections.reduce((sum, invoice) => sum + (invoice.amount_remaining ?? 0), 0);
+  const savedRunState = await getTodayRunState();
 
   return {
     today,
@@ -227,5 +231,6 @@ export async function getDailyRunData(): Promise<DailyRunData> {
     visits,
     collections,
     photosAttachedToday: visits.reduce((sum, visit) => sum + visit.photo_count, 0),
+    savedRunState,
   };
 }

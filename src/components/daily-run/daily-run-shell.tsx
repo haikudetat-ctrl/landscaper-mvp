@@ -8,7 +8,9 @@ import {
   completeRunVisitWithPhotoAction,
   markRunPaymentCollectedAction,
   removeRunVisitFromTodayAction,
+  saveRunProgressAction,
   skipRunVisitAction,
+  startRunVisitAction,
 } from "@/app/(app)/run/actions";
 import { trackEvent } from "@/lib/analytics";
 import type { CollectionInvoice, DailyRunData, DailyRunVisit, YesterdaySummary } from "@/lib/db/daily-run";
@@ -69,12 +71,52 @@ function updateVisitStatus(visits: DailyRunVisit[], visitId: string, status: str
   );
 }
 
+function displayVisitStatus(visit: DailyRunVisit, context?: { phase?: RunPhase; activeVisitId?: string | null }) {
+  const status = visit.visit_status ?? "scheduled";
+
+  if (status === "scheduled" && context?.phase === "running" && context.activeVisitId && visit.service_visit_id === context.activeVisitId) {
+    return "in_progress";
+  }
+
+  return status;
+}
+
+function formatStatusLabel(status: string) {
+  return status
+    .split("_")
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(" ");
+}
+
+function isRunPhase(value: string | null | undefined): value is RunPhase {
+  return value === "morning" || value === "confirm" || value === "ready" || value === "running" || value === "summary" || value === "collections";
+}
+
+function initialPhaseFromData(data: DailyRunData): RunPhase {
+  const savedPhase = data.savedRunState?.phase;
+  const confirmed = data.savedRunState?.confirmed_today ?? false;
+
+  if (savedPhase && isRunPhase(savedPhase)) {
+    return savedPhase;
+  }
+
+  if (confirmed) {
+    return "ready";
+  }
+
+  return "morning";
+}
+
 export function DailyRunShell({ data }: { data: DailyRunData }) {
-  const [phase, setPhase] = useState<RunPhase>("morning");
+  const [phase, setPhase] = useState<RunPhase>(() => initialPhaseFromData(data));
   const [visits, setVisits] = useState(data.visits);
-  const [activeVisitId, setActiveVisitId] = useState<string | null>(
-    data.visits.find((visit) => !terminalStatuses.has(visit.visit_status ?? ""))?.service_visit_id ?? null,
-  );
+  const [activeVisitId, setActiveVisitId] = useState<string | null>(() => {
+    const saved = data.savedRunState?.active_visit_id;
+    if (saved && data.visits.some((visit) => visit.service_visit_id === saved)) {
+      return saved;
+    }
+    return data.visits.find((visit) => !terminalStatuses.has(visit.visit_status ?? ""))?.service_visit_id ?? null;
+  });
   const [routeSummary, setRouteSummary] = useState<RouteSummary>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [isRouting, startRoutingTransition] = useTransition();
@@ -101,15 +143,32 @@ export function DailyRunShell({ data }: { data: DailyRunData }) {
   }, 0);
   const unresolvedCount = visits.filter((visit) => !terminalStatuses.has(visit.visit_status ?? "")).length;
   const runState = deriveRunState(phase, visits);
-
   function openPhase(nextPhase: RunPhase, eventName?: string) {
     setPhase(nextPhase);
     if (eventName) trackEvent(eventName, { visit_count: visits.length });
+    startMutationTransition(async () => {
+      try {
+        await saveRunProgressAction({
+          phase: nextPhase,
+          activeVisitId,
+          confirmedToday: nextPhase !== "morning" && nextPhase !== "confirm",
+        });
+      } catch {}
+    });
   }
 
   function advanceFrom(visitId: string) {
     const next = visits.find((visit) => visit.service_visit_id !== visitId && !terminalStatuses.has(visit.visit_status ?? ""));
     setActiveVisitId(next?.service_visit_id ?? null);
+    startMutationTransition(async () => {
+      try {
+        await saveRunProgressAction({
+          phase: next ? "running" : "summary",
+          activeVisitId: next?.service_visit_id ?? null,
+          confirmedToday: true,
+        });
+      } catch {}
+    });
     if (!next) {
       setPhase("summary");
       trackEvent("run_completed", { completed_count: completedCount + 1, skipped_count: skippedCount });
@@ -267,10 +326,18 @@ export function DailyRunShell({ data }: { data: DailyRunData }) {
           isRouting={isRouting}
           onGenerateRoute={generateRoute}
           onStart={() => {
-            setActiveVisitId(actionableVisits[0]?.service_visit_id ?? null);
+            const firstVisitId = actionableVisits[0]?.service_visit_id ?? null;
+            setActiveVisitId(firstVisitId);
             openPhase("running", "run_started");
-            if (actionableVisits[0]?.service_visit_id) {
-              trackEvent("visit_opened", { visit_id: actionableVisits[0].service_visit_id });
+            if (firstVisitId) {
+              trackEvent("visit_opened", { visit_id: firstVisitId });
+              startMutationTransition(async () => {
+                try {
+                  await startRunVisitAction(firstVisitId);
+                } catch (mutationError) {
+                  setError(mutationError instanceof Error ? mutationError.message : "Unable to start this visit.");
+                }
+              });
             }
           }}
         />
@@ -437,7 +504,7 @@ export function TodayConfirmationList({
                   <p className="mt-1 text-sm text-zinc-600">{formatAddress(visit)}</p>
                 </div>
                 <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold capitalize text-zinc-700">
-                  {visit.visit_status ?? "scheduled"}
+                  {formatStatusLabel(displayVisitStatus(visit))}
                 </span>
               </div>
               <div className="mt-3 flex items-center justify-between text-sm">
@@ -555,7 +622,7 @@ export function ActiveJobCard({
             <h2 className="mt-2 text-2xl font-bold leading-tight text-zinc-950">{visit.client_name ?? "No client"}</h2>
           </div>
           <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-semibold capitalize text-white">
-            {visit.visit_status ?? "scheduled"}
+            {formatStatusLabel(displayVisitStatus(visit, { phase: "running", activeVisitId: visit.service_visit_id }))}
           </span>
         </div>
 

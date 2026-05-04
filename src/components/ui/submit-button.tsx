@@ -23,7 +23,7 @@ export function SubmitButton({
       name={name}
       value={value}
       disabled={pending}
-      className={`rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${className ?? ""}`}
+      className={`min-h-11 rounded-full bg-[#287b40] px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${className ?? ""}`}
     >
       {pending ? pendingLabel ?? "Saving..." : label}
     </button>

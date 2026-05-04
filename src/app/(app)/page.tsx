@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { ActionCard, AlertCard, JobCard, MetricCard, mapVisitToJobCardData } from "@/components/cards";
+import { EmptyStateCard } from "@/components/empty-states/empty-state-card";
 import { MobileHomeDashboard } from "@/components/dashboard/mobile-home-dashboard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LinkButton } from "@/components/ui/link-button";
@@ -22,6 +24,32 @@ export default async function DashboardPage() {
           title="Operational Dashboard"
           description="Property-first daily view for scheduling, billing, and follow-up tasks."
         />
+
+        <section className="grid gap-4 lg:grid-cols-4">
+          <MetricCard label="Jobs Today" value={String(data.todayJobs.length)} helperText="Scheduled for today" />
+          <MetricCard label="Scheduled Revenue" value={formatCurrencyFromCents(data.mobile.todayExpectedRevenue)} helperText="Expected from today's route" />
+          <MetricCard label="Overdue Invoices" value={String(data.overdueInvoices.length)} helperText="Needs collection follow-up" deltaDirection={data.overdueInvoices.length > 0 ? "down" : "neutral"} />
+          <MetricCard
+            label="Completion Rate"
+            value={`${data.mobile.todayTotalJobs > 0 ? Math.round((data.mobile.todayCompletedJobs / data.mobile.todayTotalJobs) * 100) : 0}%`}
+            helperText={`${data.mobile.todayCompletedJobs}/${data.mobile.todayTotalJobs} completed`}
+          />
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-3">
+          <ActionCard title="Start Today's Run" description="Jump into the operator flow for today's route." ctaLabel="Open Run" />
+          <ActionCard title="Generate Route" description="Optimize stop order before the crew rolls out." ctaLabel="Open Properties" variant="secondary" />
+          <ActionCard title="Send Tomorrow Confirmations" description="Placeholder action until messaging automation is connected." ctaLabel="Coming Soon" variant="warning" disabled />
+        </section>
+
+        {data.mobile.overdueVisitCount > 0 ? (
+          <AlertCard
+            variant="warning"
+            title="Backlog needs attention"
+            description={`${data.mobile.overdueVisitCount} visit${data.mobile.overdueVisitCount === 1 ? "" : "s"} are still open from prior dates.`}
+            ctaLabel="Open Daily Run"
+          />
+        ) : null}
 
         <section className="grid gap-2 sm:hidden">
           <LinkButton href="/service-visits" label="Open Today's Visits" />
@@ -65,9 +93,23 @@ export default async function DashboardPage() {
           }
         >
           {data.todayJobs.length === 0 ? (
-            <EmptyState title="No jobs scheduled for today" />
+            <EmptyStateCard
+              icon={<span>+</span>}
+              headline="No jobs scheduled today"
+              helperText="Your schedule is clear right now. Add or generate visits to populate today's run."
+              ctaLabel="Open Service Visits"
+            />
           ) : (
             <>
+              <div className="mb-3 grid gap-3">
+                {data.todayJobs.slice(0, 2).map((job) => (
+                  <JobCard
+                    key={`hero-${job.service_visit_id}`}
+                    job={mapVisitToJobCardData(job)}
+                    variant={job.visit_status === "completed" ? "completed" : "compact"}
+                  />
+                ))}
+              </div>
               <div className="space-y-2 md:hidden">
                 {data.todayJobs.slice(0, 8).map((job) => (
                   <Link

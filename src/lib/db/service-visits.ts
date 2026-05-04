@@ -1,4 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { recordAppEvent, transitionServiceVisitState } from "@/lib/db/events";
+import type { Json } from "@/lib/types/database";
 import type { Tables } from "@/lib/types/database";
 import { throwDbError } from "@/lib/db/shared";
 
@@ -125,39 +127,59 @@ export async function updateServiceVisit(id: string, input: Partial<Tables<"serv
 }
 
 export async function markVisitCompleted(id: string) {
-  return updateServiceVisit(id, {
-    status: "completed",
-    completion_timestamp: new Date().toISOString(),
-    skip_reason: null,
-    reactivation_required: false,
+  const transition = await transitionServiceVisitState({
+    visitId: id,
+    eventType: "visit_completed",
   });
+
+  return transition?.[0]?.service_visit as Tables<"service_visits">;
 }
 
 export async function markVisitSkipped(id: string, reason: string, note: string | null) {
-  return updateServiceVisit(id, {
-    status: "skipped",
-    skip_reason: reason,
-    operator_notes: note,
-    completion_timestamp: null,
-    reactivation_required: true,
+  const transition = await transitionServiceVisitState({
+    visitId: id,
+    eventType: "visit_skipped",
+    payload: {
+      reason,
+      note,
+    },
   });
+
+  return transition?.[0]?.service_visit as Tables<"service_visits">;
 }
 
 export async function markVisitPendingReactivation(id: string) {
-  return updateServiceVisit(id, {
+  const updated = await updateServiceVisit(id, {
     status: "pending_reactivation",
     reactivation_required: true,
     completion_timestamp: null,
   });
+
+  await recordAppEvent({
+    entityType: "service_visit",
+    entityId: id,
+    eventType: "visit_needs_review",
+    nextState: updated as unknown as Json,
+    payload: {
+      reason: "Pending reactivation",
+    },
+  });
+
+  return updated;
 }
 
 export async function rescheduleVisit(id: string, scheduledDate: string, note: string | null) {
-  return updateServiceVisit(id, {
-    scheduled_date: scheduledDate,
-    status: "rescheduled",
-    operator_notes: note,
-    reactivation_required: false,
+  const transition = await transitionServiceVisitState({
+    visitId: id,
+    eventType: "visit_rescheduled",
+    scheduledDate,
+    payload: {
+      note,
+      scheduled_date: scheduledDate,
+    },
   });
+
+  return transition?.[0]?.service_visit as Tables<"service_visits">;
 }
 
 export async function bulkRainDelayShift(fromDate: string, reason: string) {

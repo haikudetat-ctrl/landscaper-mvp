@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { BottomSheetDialog } from "@/components/ui/bottom-sheet-dialog";
+import { ClientCard, mapClientRowToCard } from "@/components/cards";
+import { EmptyStateCard } from "@/components/empty-states/empty-state-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
@@ -26,6 +27,7 @@ export function ClientsPageShell({
 }) {
   const router = useRouter();
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Clients[number] | null>(null);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -80,19 +82,30 @@ export function ClientsPageShell({
       </form>
 
       {clients.length === 0 ? (
-        <EmptyState title="No clients yet" description="Create your first client to start tracking properties." />
+        <div className="space-y-3">
+          <EmptyStateCard
+            icon={<span>+</span>}
+            headline="No clients added yet"
+            helperText="Create your first client to start tracking properties, invoices, and route work."
+            ctaLabel="New client"
+            onClick={() => setIsNewClientOpen(true)}
+          />
+          <EmptyState title="No clients yet" description="Create your first client to start tracking properties." />
+        </div>
       ) : (
         <>
           <div className="space-y-2 md:hidden">
             {clients.map((client) => (
-              <Link key={client.id} href={`/clients/${client.id}`} className="block rounded-md border border-zinc-200 bg-white p-3 shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-zinc-900">{formatClientName(client)}</p>
-                  <StatusPill status={client.is_active ? "active" : "inactive"} />
-                </div>
-                <p className="mt-1 text-xs text-zinc-600">{client.primary_email ?? "-"}</p>
-                <p className="mt-1 text-xs text-zinc-500">{client.primary_phone ?? "No phone"}</p>
-              </Link>
+              <button key={client.id} type="button" onClick={() => setSelectedClient(client)} className="block w-full text-left">
+                <ClientCard
+                  client={{
+                    ...mapClientRowToCard(client),
+                    // Backend currently does not provide list-level balance/next service dates in this query.
+                    name: formatClientName(client),
+                  }}
+                  showQuickActions={false}
+                />
+              </button>
             ))}
           </div>
           <div className="hidden md:block">
@@ -108,9 +121,9 @@ export function ClientsPageShell({
                 {clients.map((client) => (
                   <tr key={client.id} className="border-t border-zinc-200">
                     <Td>
-                      <Link href={`/clients/${client.id}`} className="font-medium underline">
+                      <button type="button" onClick={() => setSelectedClient(client)} className="min-h-11 text-left font-semibold text-zinc-950 underline decoration-emerald-600 underline-offset-4">
                         {formatClientName(client)}
-                      </Link>
+                      </button>
                     </Td>
                     <Td>
                       <div>{client.primary_email ?? "-"}</div>
@@ -140,6 +153,36 @@ export function ClientsPageShell({
             className="px-[6px] sm:px-[10px]"
           />
         </div>
+      </BottomSheetDialog>
+
+      <BottomSheetDialog
+        open={Boolean(selectedClient)}
+        onClose={() => setSelectedClient(null)}
+        eyebrow="Client"
+        title={selectedClient ? formatClientName(selectedClient) : "Client"}
+      >
+        {selectedClient ? (
+          <div className="max-h-[calc(85vh-88px)] overflow-y-auto px-4 pb-6 pt-4 sm:px-5">
+            <ClientCard
+              client={{
+                ...mapClientRowToCard(selectedClient),
+                name: formatClientName(selectedClient),
+                // List query does not include aggregate balance or service dates yet.
+              }}
+              variant="expanded"
+            />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-700">Billing notes</p>
+                <p className="mt-2 text-sm font-semibold text-zinc-900">{selectedClient.billing_notes || "No billing notes yet."}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-700">Collection notes</p>
+                <p className="mt-2 text-sm font-semibold text-zinc-900">{selectedClient.cash_collection_notes || "No collection notes yet."}</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </BottomSheetDialog>
     </div>
   );

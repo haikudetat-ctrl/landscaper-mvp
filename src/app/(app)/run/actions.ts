@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 
 import { getCurrentUserMembership } from "@/lib/db/auth";
+import { transitionServiceVisitState } from "@/lib/db/events";
 import { markVisitCompleted, markVisitPendingReactivation, markVisitSkipped } from "@/lib/db/service-visits";
 import { uploadVisitPhoto } from "@/lib/db/photos";
 import { recordPayment } from "@/lib/db/invoices";
+import { saveTodayRunState, type RunPhase } from "@/lib/db/run-state";
 import { paymentMethods } from "@/lib/utils/constants";
 
 async function requireMembership() {
@@ -23,9 +25,32 @@ function readString(formData: FormData, key: string) {
 export async function completeRunVisitAction(visitId: string) {
   await requireMembership();
   await markVisitCompleted(visitId);
+  await saveTodayRunState({
+    phase: "running",
+    activeVisitId: null,
+    confirmedToday: true,
+  });
   revalidatePath("/run");
   revalidatePath("/");
   revalidatePath("/service-visits");
+  return { ok: true };
+}
+
+export async function startRunVisitAction(visitId: string) {
+  await requireMembership();
+  await transitionServiceVisitState({
+    visitId,
+    eventType: "visit_started",
+  });
+  await saveTodayRunState({
+    phase: "running",
+    activeVisitId: visitId,
+    confirmedToday: true,
+  });
+  revalidatePath("/run");
+  revalidatePath("/");
+  revalidatePath("/service-visits");
+  revalidatePath(`/service-visits/${visitId}`);
   return { ok: true };
 }
 
@@ -44,6 +69,11 @@ export async function completeRunVisitWithPhotoAction(visitId: string, formData:
     file,
   });
   await markVisitCompleted(visitId);
+  await saveTodayRunState({
+    phase: "running",
+    activeVisitId: null,
+    confirmedToday: true,
+  });
 
   revalidatePath("/run");
   revalidatePath("/");
@@ -55,6 +85,11 @@ export async function completeRunVisitWithPhotoAction(visitId: string, formData:
 export async function skipRunVisitAction(visitId: string, reason: string, note: string | null) {
   await requireMembership();
   await markVisitSkipped(visitId, reason, note);
+  await saveTodayRunState({
+    phase: "running",
+    activeVisitId: null,
+    confirmedToday: true,
+  });
   revalidatePath("/run");
   revalidatePath("/");
   revalidatePath("/service-visits");
@@ -65,6 +100,11 @@ export async function skipRunVisitAction(visitId: string, reason: string, note: 
 export async function removeRunVisitFromTodayAction(visitId: string) {
   await requireMembership();
   await markVisitPendingReactivation(visitId);
+  await saveTodayRunState({
+    phase: "confirm",
+    activeVisitId: null,
+    confirmedToday: false,
+  });
   revalidatePath("/run");
   revalidatePath("/");
   revalidatePath("/service-visits");
@@ -98,5 +138,20 @@ export async function markRunPaymentCollectedAction(formData: FormData) {
 
   revalidatePath("/run");
   revalidatePath("/invoices");
+  return { ok: true };
+}
+
+export async function saveRunProgressAction(input: {
+  phase: RunPhase;
+  activeVisitId?: string | null;
+  confirmedToday?: boolean;
+}) {
+  await requireMembership();
+  await saveTodayRunState({
+    phase: input.phase,
+    activeVisitId: input.activeVisitId ?? null,
+    confirmedToday: input.confirmedToday ?? false,
+  });
+  revalidatePath("/run");
   return { ok: true };
 }

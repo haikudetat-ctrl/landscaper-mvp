@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
@@ -14,6 +13,9 @@ import {
   YAxis,
 } from "recharts";
 
+import { InvoiceCard, mapInvoiceRowToCard } from "@/components/cards";
+import { EmptyStateCard } from "@/components/empty-states/empty-state-card";
+import { BottomSheetDialog } from "@/components/ui/bottom-sheet-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusPill } from "@/components/ui/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
@@ -120,6 +122,7 @@ export function InvoiceDashboard({
   const [status, setStatus] = useState(initialStatus);
   const [sortKey, setSortKey] = useState<SortKey>("due_date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [expandedInvoice, setExpandedInvoice] = useState<InvoiceBalance | null>(null);
 
   const dashboard = useMemo(() => {
     const totalBilled = invoices.reduce((sum, invoice) => sum + money(invoice.amount_due), 0);
@@ -227,7 +230,7 @@ export function InvoiceDashboard({
           setSortDirection(key === "client_name" || key === "invoice_status" ? "asc" : "desc");
         }}
         className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-          isActive ? "border-zinc-900 bg-zinc-900 text-white" : "border-emerald-200 bg-white text-zinc-700 hover:bg-emerald-50"
+          isActive ? "border-[#287b40] bg-emerald-100 text-zinc-950" : "border-emerald-200 bg-white text-zinc-800 hover:bg-emerald-50"
         }`}
       >
         {label}
@@ -377,29 +380,21 @@ export function InvoiceDashboard({
         </div>
 
         {filteredInvoices.length === 0 ? (
-          <EmptyState title="No invoices found" />
+          <div className="space-y-3">
+            <EmptyStateCard
+              icon={<span>$</span>}
+              headline="No overdue invoices"
+              helperText="Invoices will appear here as soon as billing records are created."
+            />
+            <EmptyState title="No invoices found" />
+          </div>
         ) : (
           <>
             <div className="space-y-2 md:hidden">
               {filteredInvoices.map((invoice) => (
-                <Link
-                  key={invoice.invoice_id}
-                  href={`/invoices/${invoice.invoice_id}`}
-                  className="block rounded-md border border-zinc-200 bg-white p-3 shadow-sm"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-zinc-900">#{invoice.invoice_number ?? "-"}</p>
-                    <StatusPill status={invoice.invoice_status} />
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-600">{invoice.client_name ?? "No contact"}</p>
-                  <p className="mt-1 text-xs text-zinc-600">{formatAddress(invoice)}</p>
-                  <div className="mt-2 flex items-center justify-between gap-2 text-xs text-zinc-600">
-                    <span>Due {formatDate(invoice.due_date)}</span>
-                    <span className="font-medium text-zinc-900">
-                      {formatCurrencyFromCents(invoice.amount_remaining)}
-                    </span>
-                  </div>
-                </Link>
+                <button key={invoice.invoice_id} type="button" onClick={() => setExpandedInvoice(invoice)} className="block w-full text-left">
+                  <InvoiceCard invoice={mapInvoiceRowToCard(invoice)} />
+                </button>
               ))}
             </div>
             <div className="hidden md:block">
@@ -420,9 +415,13 @@ export function InvoiceDashboard({
                   {filteredInvoices.map((invoice) => (
                     <tr key={invoice.invoice_id} className="border-t border-zinc-200">
                       <Td>
-                        <Link href={`/invoices/${invoice.invoice_id}`} className="font-medium underline">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedInvoice(invoice)}
+                          className="min-h-11 text-left font-semibold text-zinc-950 underline decoration-emerald-600 underline-offset-4"
+                        >
                           #{invoice.invoice_number ?? "-"}
-                        </Link>
+                        </button>
                       </Td>
                       <Td>{invoice.client_name ?? "-"}</Td>
                       <Td className="font-semibold text-zinc-900">{formatAddress(invoice)}</Td>
@@ -441,6 +440,33 @@ export function InvoiceDashboard({
           </>
         )}
       </section>
+
+      <BottomSheetDialog
+        open={Boolean(expandedInvoice)}
+        onClose={() => setExpandedInvoice(null)}
+        eyebrow="Invoice"
+        title={expandedInvoice ? `#${expandedInvoice.invoice_number ?? "Invoice"}` : "Invoice"}
+      >
+        {expandedInvoice ? (
+          <div className="max-h-[calc(85vh-88px)] overflow-y-auto px-4 pb-6 pt-4 sm:px-5">
+            <InvoiceCard invoice={mapInvoiceRowToCard(expandedInvoice)} variant="expanded" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-700">Total</p>
+                <p className="mt-2 text-xl font-bold text-zinc-950">{formatCurrencyFromCents(expandedInvoice.amount_due)}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-700">Paid</p>
+                <p className="mt-2 text-xl font-bold text-zinc-950">{formatCurrencyFromCents(expandedInvoice.amount_paid)}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-700">Property</p>
+                <p className="mt-2 text-sm font-bold text-zinc-950">{formatAddress(expandedInvoice)}</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </BottomSheetDialog>
     </div>
   );
 }

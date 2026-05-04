@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { PropertyCard } from "@/components/cards";
 import { MapboxRouteMap } from "@/components/maps/mapbox-route-map";
+import { BottomSheetDialog } from "@/components/ui/bottom-sheet-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { StatusPill } from "@/components/ui/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
@@ -121,12 +122,12 @@ export function PropertyDashboard({
   const [status, setStatus] = useState("");
   const [mapStyle, setMapStyle] = useState<MapStyle>(mapProvider === "mapbox" && mapboxToken ? "mapbox" : "osm");
   const [selectedId, setSelectedId] = useState<string | null>(properties[0]?.id ?? null);
+  const [detailProperty, setDetailProperty] = useState<PropertyDashboardRecord | null>(null);
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [isRouting, setIsRouting] = useState(false);
 
   const mappableProperties = useMemo(() => properties.filter(isMappable), [properties]);
-  const coordinateCoverage = properties.length > 0 ? Math.round((mappableProperties.length / properties.length) * 100) : 0;
 
   const filteredProperties = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -269,25 +270,6 @@ export function PropertyDashboard({
 
   return (
     <div className="space-y-4">
-      <section className="grid gap-3 md:grid-cols-4">
-        <div className="rounded-2xl border border-emerald-200/80 bg-[#f9fcf9] p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Properties</p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-950">{properties.length}</p>
-        </div>
-        <div className="rounded-2xl border border-emerald-200/80 bg-[#f9fcf9] p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Active</p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-950">{properties.filter((property) => property.is_active).length}</p>
-        </div>
-        <div className="rounded-2xl border border-emerald-200/80 bg-[#f9fcf9] p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Mappable</p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-950">{mappableProperties.length}</p>
-        </div>
-        <div className="rounded-2xl border border-emerald-200/80 bg-[#f9fcf9] p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Coordinate coverage</p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-950">{coordinateCoverage}%</p>
-        </div>
-      </section>
-
       <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <div className="overflow-hidden rounded-2xl border border-emerald-200/80 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-100 p-3">
@@ -300,7 +282,7 @@ export function PropertyDashboard({
                 type="button"
                 onClick={() => setMapStyle("osm")}
                 className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                  mapStyle === "osm" ? "border-zinc-900 bg-zinc-900 text-white" : "border-emerald-200 bg-white text-zinc-700"
+                  mapStyle === "osm" ? "border-[#287b40] bg-emerald-100 text-zinc-950" : "border-emerald-200 bg-white text-zinc-800"
                 }`}
               >
                 OSM
@@ -310,7 +292,7 @@ export function PropertyDashboard({
                 onClick={() => setMapStyle("mapbox")}
                 disabled={!mapboxToken}
                 className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                  mapStyle === "mapbox" ? "border-zinc-900 bg-zinc-900 text-white" : "border-emerald-200 bg-white text-zinc-700"
+                  mapStyle === "mapbox" ? "border-[#287b40] bg-emerald-100 text-zinc-950" : "border-emerald-200 bg-white text-zinc-800"
                 } disabled:cursor-not-allowed disabled:opacity-40`}
               >
                 Mapbox
@@ -319,7 +301,7 @@ export function PropertyDashboard({
                 type="button"
                 onClick={createRoute}
                 disabled={!canRoute || isRouting}
-                className="rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-full bg-[#287b40] px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isRouting ? "Optimizing..." : "Optimize route"}
               </button>
@@ -438,9 +420,13 @@ export function PropertyDashboard({
           {selectedProperty ? (
             <div className="mt-3 space-y-3">
               <div>
-                <Link href={`/properties/${selectedProperty.id}`} className="text-lg font-semibold text-zinc-950 underline">
+                <button
+                  type="button"
+                  onClick={() => setDetailProperty(selectedProperty)}
+                  className="min-h-11 text-left text-lg font-semibold text-zinc-950 underline decoration-emerald-600 underline-offset-4"
+                >
                   {selectedProperty.property_name || formatAddress(selectedProperty)}
-                </Link>
+                </button>
                 <p className="mt-1 text-sm text-zinc-600">{formatAddress(selectedProperty)}</p>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -509,14 +495,19 @@ export function PropertyDashboard({
                 <button
                   key={property.id}
                   type="button"
-                  onClick={() => setSelectedId(property.id)}
-                  className="block w-full rounded-md border border-zinc-200 bg-white p-3 text-left shadow-sm"
+                  onClick={() => setDetailProperty(property)}
+                  className="block w-full text-left"
                 >
-                  <p className="text-sm font-semibold text-zinc-900">{formatAddress(property)}</p>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-xs text-zinc-600">{getClientName(property)}</p>
-                    <StatusPill status={property.is_active ? "active" : "inactive"} />
-                  </div>
+                  <PropertyCard
+                    property={{
+                      address: formatAddress(property),
+                      clientName: getClientName(property),
+                      accessNotes: property.access_notes,
+                      propertyNotes: property.service_notes,
+                      status: property.is_active ? "completed" : "paused",
+                    }}
+                    variant="compact"
+                  />
                 </button>
               ))}
             </div>
@@ -534,9 +525,13 @@ export function PropertyDashboard({
                   {filteredProperties.map((property) => (
                     <tr key={property.id} className="border-t border-zinc-200">
                       <Td>
-                        <Link href={`/properties/${property.id}`} className="font-semibold text-zinc-900 underline">
+                        <button
+                          type="button"
+                          onClick={() => setDetailProperty(property)}
+                          className="min-h-11 text-left font-semibold text-zinc-950 underline decoration-emerald-600 underline-offset-4"
+                        >
                           {formatAddress(property)}
-                        </Link>
+                        </button>
                       </Td>
                       <Td>{getClientName(property)}</Td>
                       <Td>
@@ -559,6 +554,54 @@ export function PropertyDashboard({
           </>
         )}
       </section>
+
+      <BottomSheetDialog
+        open={Boolean(detailProperty)}
+        onClose={() => setDetailProperty(null)}
+        eyebrow="Property"
+        title={detailProperty ? detailProperty.property_name || formatAddress(detailProperty) : "Property"}
+      >
+        {detailProperty ? (
+          <div className="max-h-[calc(85vh-88px)] overflow-y-auto px-4 pb-6 pt-4 sm:px-5">
+            <PropertyCard
+              property={{
+                address: formatAddress(detailProperty),
+                clientName: getClientName(detailProperty),
+                accessNotes: detailProperty.access_notes,
+                propertyNotes: detailProperty.service_notes,
+                status: detailProperty.is_active ? "completed" : "paused",
+              }}
+              variant="expanded"
+            />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedId(detailProperty.id);
+                  setDetailProperty(null);
+                }}
+                className="min-h-11 rounded-full border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-emerald-50"
+              >
+                Focus on map
+              </button>
+              {isMappable(detailProperty) ? (
+                <a
+                  href={`https://www.openstreetmap.org/?mlat=${detailProperty.latitude}&mlon=${detailProperty.longitude}#map=17/${detailProperty.latitude}/${detailProperty.longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#287b40] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#236d38]"
+                >
+                  Open map
+                </a>
+              ) : (
+                <p className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-950">
+                  Coordinates are missing.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </BottomSheetDialog>
     </div>
   );
 }

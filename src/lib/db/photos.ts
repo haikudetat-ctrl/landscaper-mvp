@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { transitionServiceVisitState } from "@/lib/db/events";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { throwDbError } from "@/lib/db/shared";
 
@@ -68,5 +69,17 @@ export async function uploadVisitPhoto(params: {
     .single();
 
   throwDbError(insertResult.error, "Failed to create visit photo record");
+
+  await transitionServiceVisitState({
+    visitId: params.visitId,
+    eventType: "photo_uploaded",
+    payload: {
+      photo_id: insertResult.data?.id,
+      photo_type: params.photoType,
+      caption: params.caption,
+      storage_path: filePath,
+    },
+  });
+
   return insertResult.data;
 }

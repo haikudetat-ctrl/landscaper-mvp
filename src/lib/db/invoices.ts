@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { recordAppEvent } from "@/lib/db/events";
 import type { Inserts } from "@/lib/types/database";
 import { throwDbError } from "@/lib/db/shared";
 
@@ -89,6 +90,17 @@ export async function createInvoiceForVisit(serviceVisitId: string, dueDays: num
   if (!result.data) {
     throw new Error("Invoice creation function returned no id");
   }
+
+  await recordAppEvent({
+    entityType: "invoice",
+    entityId: result.data,
+    eventType: "invoice_created",
+    payload: {
+      service_visit_id: serviceVisitId,
+      due_days: dueDays,
+    },
+  });
+
   return result.data;
 }
 
@@ -111,5 +123,19 @@ export async function recordPayment(input: Inserts<"payments">) {
   if (!paymentResult.data) {
     throw new Error("Payment insert returned no record");
   }
+
+  await recordAppEvent({
+    entityType: "invoice",
+    entityId: invoiceId,
+    eventType: "payment_recorded",
+    payload: {
+      payment_id: paymentResult.data.id,
+      amount: paymentResult.data.amount,
+      payment_date: paymentResult.data.payment_date,
+      payment_method: paymentResult.data.payment_method,
+      reference_note: paymentResult.data.reference_note,
+    },
+  });
+
   return paymentResult.data;
 }
