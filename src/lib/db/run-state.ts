@@ -2,6 +2,7 @@ import { getCurrentUserMembership } from "@/lib/db/auth";
 import { throwDbError } from "@/lib/db/shared";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/types/database";
+import type { PostgrestError } from "@supabase/supabase-js";
 
 export type RunPhase = "morning" | "confirm" | "ready" | "running" | "summary" | "collections";
 
@@ -18,6 +19,10 @@ export type DailyRunStateRow = {
   updated_at: string;
 };
 
+type RpcClient = Awaited<ReturnType<typeof createSupabaseAuthServerClient>> & {
+  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: PostgrestError | null }>;
+};
+
 function localDate() {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -27,7 +32,7 @@ export async function getTodayRunState() {
   const { user, membership } = await getCurrentUserMembership();
   if (!user || !membership?.organization_id) return null;
 
-  const supabase = await createSupabaseAuthServerClient();
+  const supabase = (await createSupabaseAuthServerClient()) as RpcClient;
   const result = await supabase.rpc("get_daily_run_state", {
     p_organization_id: membership.organization_id,
     p_user_id: user.id,
@@ -49,7 +54,7 @@ export async function saveTodayRunState(input: {
     throw new Error("You must be signed in with an organization membership.");
   }
 
-  const supabase = await createSupabaseAuthServerClient();
+  const supabase = (await createSupabaseAuthServerClient()) as RpcClient;
   const result = await supabase.rpc("upsert_daily_run_state", {
     p_organization_id: membership.organization_id,
     p_user_id: user.id,
