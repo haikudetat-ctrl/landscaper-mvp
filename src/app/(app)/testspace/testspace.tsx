@@ -2,6 +2,7 @@
 
 import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { useEffect } from "react";
+import type { CSSProperties } from "react";
 
 import { PageHeader } from "@/components/ui/page-header";
 import type { DailyRunVisit } from "@/lib/db/daily-run";
@@ -14,6 +15,14 @@ export function Testspace({ previewVisit }: { previewVisit: DailyRunVisit | null
   const progress = useMotionValue(0);
   const offsetDistance = useTransform(progress, (value) => `${value * 100}%`);
   const mowerScale = useTransform(progress, [0, 1], [1.25, 1]);
+  const mowerTrackStyle = {
+    offsetDistance,
+    scale: mowerScale,
+    offsetPath: `path("${mowerPath}")`,
+    offsetRotate: "auto 90deg",
+    WebkitOffsetPath: `path("${mowerPath}")`,
+    WebkitOffsetRotate: "auto 90deg",
+  } as CSSProperties;
 
   useEffect(() => {
     const controls = animate(progress, 1, {
@@ -64,14 +73,7 @@ export function Testspace({ previewVisit }: { previewVisit: DailyRunVisit | null
 
             <motion.div
               className="absolute left-0 top-0 h-14 w-14"
-              style={{
-                offsetDistance,
-                scale: mowerScale,
-                offsetPath: `path("${mowerPath}")`,
-                offsetRotate: "auto 90deg",
-                WebkitOffsetPath: `path("${mowerPath}")`,
-                WebkitOffsetRotate: "auto 90deg",
-              }}
+              style={mowerTrackStyle}
             >
               <div className="h-full w-full rounded-full border border-[#4fa936] bg-gradient-to-b from-[#8be266] via-[#66cc33] to-[#2e9e2e] p-2 shadow-[0_4px_0_#2a7a2f,0_6px_10px_rgba(18,75,30,0.28)]">
                 <div
