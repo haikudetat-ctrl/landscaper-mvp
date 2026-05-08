@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
+import { useFormStatus } from "react-dom";
 
 import type { Tables } from "@/lib/types/database";
 import { paymentMethods, planFrequencies, planStatuses } from "@/lib/utils/constants";
@@ -140,14 +141,34 @@ function statusClasses(severity: RowIssue["severity"]) {
 }
 
 function ImportSubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+
   return (
     <button
       type="submit"
-      disabled={disabled}
+      disabled={disabled || pending}
       className="rounded-full bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      Import rows
+      {pending ? "Importing..." : "Import rows"}
     </button>
+  );
+}
+
+function ImportLoadingScreen() {
+  const { pending } = useFormStatus();
+
+  if (!pending) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-emerald-200 bg-white p-6 text-center shadow-lg">
+        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+        <h3 className="mt-4 text-lg font-semibold text-zinc-900">Import in progress</h3>
+        <p className="mt-2 text-sm text-zinc-700">
+          We are creating clients, properties, and service plans. This can take a moment.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -516,6 +537,8 @@ export function ClientImportWizard({
         </div>
         <ImportSubmitButton disabled={hasErrors} />
       </div>
+
+      <ImportLoadingScreen />
     </form>
   );
 }
