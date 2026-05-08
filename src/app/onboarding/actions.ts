@@ -13,6 +13,10 @@ export type OnboardingImportState = {
   result: ClientImportResult | null;
 };
 
+export type CompanyProfileSetupState = {
+  error: string | null;
+};
+
 type RawImportRow = Record<string, unknown>;
 
 function text(value: unknown) {
@@ -100,10 +104,43 @@ async function loadMembership() {
   }
 
   if (!membershipResult.data) {
-    redirect("/account-pending");
+    redirect("/onboarding");
   }
 
   return { supabase, organizationId: membershipResult.data.organization_id };
+}
+
+export async function createCompanyProfileAction(
+  _previousState: CompanyProfileSetupState,
+  formData: FormData,
+): Promise<CompanyProfileSetupState> {
+  const supabase = await createSupabaseAuthServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const businessName = text(formData.get("businessName"));
+  const ownerDisplayName = text(formData.get("ownerDisplayName"));
+
+  if (!businessName) {
+    return { error: "Company name is required." };
+  }
+
+  const onboardingResult = await supabase.rpc("onboard_organization", {
+    p_business_name: businessName,
+    p_display_name: ownerDisplayName || user.user_metadata?.full_name || user.email || "Owner",
+  });
+
+  if (onboardingResult.error) {
+    return { error: onboardingResult.error.message };
+  }
+
+  revalidatePath("/onboarding");
+  redirect("/onboarding");
 }
 
 export async function startOnboardingAction() {

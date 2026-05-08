@@ -61,11 +61,11 @@ export async function proxy(request: NextRequest) {
   const membership = membershipResult.data;
   const hasMembership = Boolean(membership);
 
-  if (!hasMembership && pathname !== "/account-pending") {
-    const pendingUrl = request.nextUrl.clone();
-    pendingUrl.pathname = "/account-pending";
-    pendingUrl.search = "";
-    return NextResponse.redirect(pendingUrl);
+  if (!hasMembership && pathname !== "/onboarding") {
+    const onboardingUrl = request.nextUrl.clone();
+    onboardingUrl.pathname = "/onboarding";
+    onboardingUrl.search = "";
+    return NextResponse.redirect(onboardingUrl);
   }
 
   if (hasMembership && pathname === "/account-pending") {

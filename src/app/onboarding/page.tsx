@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getServicePlanFormOptions } from "@/lib/db/service-plans";
 import { getOnboardingContext, getOrganizationImportCounts } from "@/lib/db/onboarding";
+import { CompanyProfileSetup } from "./company-profile-setup";
 
 import { OnboardingForm } from "./onboarding-form";
 
@@ -13,7 +14,13 @@ export default async function OnboardingPage() {
   }
 
   if (!membership) {
-    redirect("/account-pending");
+    const defaultOwnerName =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      user.email ||
+      "";
+
+    return <CompanyProfileSetup defaultOwnerName={defaultOwnerName} />;
   }
 
   if (!onboarding) {

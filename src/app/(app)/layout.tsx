@@ -15,7 +15,7 @@ export default async function MainAppLayout({ children }: { children: ReactNode 
   }
 
   if (!membership) {
-    redirect("/account-pending");
+    redirect("/onboarding");
   }
 
   const supabase = await createSupabaseAuthServerClient();

@@ -14,7 +14,7 @@ export default async function LoginPage({
   const { user, membership } = await getCurrentUserMembership();
 
   if (user && !membership) {
-    redirect("/account-pending");
+    redirect("/onboarding");
   }
 
   if (user && membership) {
