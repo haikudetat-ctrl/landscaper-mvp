@@ -1,7 +1,5 @@
 "use client";
 
-import { useActionState } from "react";
-
 import type { Tables } from "@/lib/types/database";
 import { ClientImportWizard } from "@/app/(app)/clients/import/client-import-wizard";
 
@@ -9,7 +7,6 @@ import {
   completeOnboardingAction,
   importOnboardingClientsAction,
   startOnboardingAction,
-  type OnboardingImportState,
 } from "./actions";
 
 type ServiceTypeOption = Pick<Tables<"service_types">, "id" | "label">;
@@ -27,11 +24,6 @@ type OnboardingProps = {
   };
 };
 
-const initialState: OnboardingImportState = {
-  error: null,
-  result: null,
-};
-
 function statusIndex(step: string) {
   if (step === "welcome") return 0;
   if (step === "import") return 1;
@@ -40,7 +32,6 @@ function statusIndex(step: string) {
 }
 
 export function OnboardingForm({ organizationName, status, currentStep, serviceTypes, counts }: OnboardingProps) {
-  const [importState, importAction] = useActionState(importOnboardingClientsAction, initialState);
   const active = statusIndex(currentStep);
 
   return (
@@ -87,12 +78,7 @@ export function OnboardingForm({ organizationName, status, currentStep, serviceT
         {(status === "in_progress" || status === "import_uploaded" || currentStep === "import") && (
           <section className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-xl font-semibold text-zinc-950">Step 2: Bulk import</h2>
-            <ClientImportWizard action={importAction} serviceTypes={serviceTypes} />
-            {importState.error ? (
-              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
-                {importState.error}
-              </p>
-            ) : null}
+            <ClientImportWizard action={importOnboardingClientsAction} serviceTypes={serviceTypes} />
           </section>
         )}
 
