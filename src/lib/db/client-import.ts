@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 import type { Inserts, Tables } from "@/lib/types/database";
 import type { ClientImportRowInput } from "@/lib/validation/client-import";
 import { throwDbError } from "@/lib/db/shared";
@@ -27,7 +27,7 @@ function normalizeFrequency(value: ClientImportRowInput["frequency"]) {
 }
 
 export async function importClientsWithPlans(rows: ClientImportRowInput[]): Promise<ClientImportResult> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseAuthServerClient();
   const created: ClientImportCreatedRow[] = [];
 
   for (const row of rows) {

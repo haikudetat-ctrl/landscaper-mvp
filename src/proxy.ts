@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/lib/types/database";
 
-const publicRoutes = ["/login"];
+const publicRoutes = ["/login", "/account-pending", "/hdz", "/intake"];
 
 function isPublicRoute(pathname: string) {
   return publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
@@ -53,25 +53,52 @@ export async function proxy(request: NextRequest) {
 
   const membershipResult = await supabase
     .from("organization_members")
-    .select("id")
+    .select("id, organization_id")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
 
-  const hasMembership = Boolean(membershipResult.data);
+  const membership = membershipResult.data;
+  const hasMembership = Boolean(membership);
 
-  if (!hasMembership && pathname !== "/onboarding") {
-    const onboardingUrl = request.nextUrl.clone();
-    onboardingUrl.pathname = "/onboarding";
-    onboardingUrl.search = "";
-    return NextResponse.redirect(onboardingUrl);
+  if (!hasMembership && pathname !== "/account-pending") {
+    const pendingUrl = request.nextUrl.clone();
+    pendingUrl.pathname = "/account-pending";
+    pendingUrl.search = "";
+    return NextResponse.redirect(pendingUrl);
   }
 
-  if (hasMembership && (pathname === "/login" || pathname === "/onboarding")) {
+  if (hasMembership && pathname === "/account-pending") {
     const appUrl = request.nextUrl.clone();
-    appUrl.pathname = "/";
+    appUrl.pathname = "/onboarding";
     appUrl.search = "";
     return NextResponse.redirect(appUrl);
+  }
+
+  if (hasMembership) {
+    const onboardingResult = await supabase
+      .from("organization_onboarding")
+      .select("status")
+      .eq("organization_id", membership.organization_id)
+      .limit(1)
+      .maybeSingle();
+
+    const onboardingStatus = onboardingResult.data?.status ?? "not_started";
+    const isComplete = onboardingStatus === "completed";
+
+    if (!isComplete && pathname !== "/onboarding") {
+      const onboardingUrl = request.nextUrl.clone();
+      onboardingUrl.pathname = "/onboarding";
+      onboardingUrl.search = "";
+      return NextResponse.redirect(onboardingUrl);
+    }
+
+    if (isComplete && (pathname === "/login" || pathname === "/onboarding")) {
+      const appUrl = request.nextUrl.clone();
+      appUrl.pathname = "/";
+      appUrl.search = "";
+      return NextResponse.redirect(appUrl);
+    }
   }
 
   return response;

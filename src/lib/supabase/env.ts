@@ -13,5 +13,6 @@ export function getSupabaseEnv() {
     anonKey,
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     visitPhotoBucket: process.env.SUPABASE_VISIT_PHOTO_BUCKET ?? "visit-photos",
+    leadPhotoBucket: process.env.SUPABASE_LEAD_PHOTO_BUCKET ?? "lead-photos",
   };
 }

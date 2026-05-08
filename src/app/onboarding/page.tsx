@@ -1,29 +1,45 @@
 import { redirect } from "next/navigation";
 
-import { getCurrentUserMembership } from "@/lib/db/auth";
+import { getServicePlanFormOptions } from "@/lib/db/service-plans";
+import { getOnboardingContext, getOrganizationImportCounts } from "@/lib/db/onboarding";
 
 import { OnboardingForm } from "./onboarding-form";
 
 export default async function OnboardingPage() {
-  const { user, membership } = await getCurrentUserMembership();
+  const { user, membership, onboarding } = await getOnboardingContext();
 
   if (!user) {
     redirect("/login");
   }
 
-  if (membership) {
+  if (!membership) {
+    redirect("/account-pending");
+  }
+
+  if (!onboarding) {
+    throw new Error("Onboarding was not initialized.");
+  }
+
+  if (onboarding.status === "completed") {
     redirect("/");
   }
 
-  const defaultOwnerName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.email ||
-    "";
+  const [{ serviceTypes }, counts] = await Promise.all([
+    getServicePlanFormOptions(),
+    getOrganizationImportCounts(membership.organization_id),
+  ]);
+
+  const organization = Array.isArray(membership.organizations)
+    ? membership.organizations[0]
+    : membership.organizations;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#e9efea] px-4 py-10">
-      <OnboardingForm defaultOwnerName={defaultOwnerName} />
-    </main>
+    <OnboardingForm
+      organizationName={organization?.name ?? "your organization"}
+      status={onboarding.status}
+      currentStep={onboarding.current_step}
+      serviceTypes={serviceTypes}
+      counts={counts}
+    />
   );
 }

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentUserMembership } from "@/lib/db/auth";
+import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 
 import { LoginPanel } from "./login-panel";
 
@@ -12,12 +13,21 @@ export default async function LoginPage({
   const params = await searchParams;
   const { user, membership } = await getCurrentUserMembership();
 
-  if (user && membership) {
-    redirect("/");
+  if (user && !membership) {
+    redirect("/account-pending");
   }
 
-  if (user && !membership) {
-    redirect("/onboarding");
+  if (user && membership) {
+    const supabase = await createSupabaseAuthServerClient();
+    const onboardingResult = await supabase
+      .from("organization_onboarding")
+      .select("status")
+      .eq("organization_id", membership.organization_id)
+      .limit(1)
+      .maybeSingle();
+
+    const isComplete = onboardingResult.data?.status === "completed";
+    redirect(isComplete ? "/" : "/onboarding");
   }
 
   return (
