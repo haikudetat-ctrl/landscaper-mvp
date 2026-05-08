@@ -609,6 +609,103 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          budget_range: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          phone: string
+          preferred_contact_method: string
+          project_description: string
+          property_address: string
+          services_requested: string[]
+          source: string
+          status: string
+          tenant_slug: string
+          timeline: string
+          updated_at: string
+        }
+        Insert: {
+          budget_range: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+          phone: string
+          preferred_contact_method: string
+          project_description: string
+          property_address: string
+          services_requested?: string[]
+          source?: string
+          status?: string
+          tenant_slug: string
+          timeline: string
+          updated_at?: string
+        }
+        Update: {
+          budget_range?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+          phone?: string
+          preferred_contact_method?: string
+          project_description?: string
+          property_address?: string
+          services_requested?: string[]
+          source?: string
+          status?: string
+          tenant_slug?: string
+          timeline?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_photos: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          lead_id: string
+          storage_path: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          lead_id: string
+          storage_path: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_photos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number

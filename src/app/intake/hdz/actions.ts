@@ -36,7 +36,7 @@ export async function submitHdzIntakeAction(formData: FormData) {
   const now = new Date().toISOString();
 
   const leadResult = await supabase
-    .from("leads" as never)
+    .from("leads")
     .insert({
       tenant_slug: parsed.data.tenantSlug,
       name: parsed.data.name,
@@ -78,7 +78,7 @@ export async function submitHdzIntakeAction(formData: FormData) {
         throw new Error(`Photo upload failed: ${uploadResult.error.message}`);
       }
 
-      const photoInsert = await supabase.from("lead_photos" as never).insert({
+      const photoInsert = await supabase.from("lead_photos").insert({
         lead_id: leadResult.data.id,
         storage_path: filePath,
         caption: null,
