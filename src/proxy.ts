@@ -75,7 +75,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(appUrl);
   }
 
-  if (hasMembership) {
+  if (membership) {
     const onboardingResult = await supabase
       .from("organization_onboarding")
       .select("status")
