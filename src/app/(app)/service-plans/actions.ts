@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import {
   createServicePlan,
   generateVisitsForActivePlans,
@@ -74,6 +76,7 @@ async function createServicePlanFromForm(formData: FormData) {
 }
 
 export async function createServicePlanAction(formData: FormData) {
+  await requirePermission(PERMISSIONS.servicePlansWrite);
   const result = await createServicePlanFromForm(formData);
 
   if (result.error || !result.created) {
@@ -87,6 +90,7 @@ export async function createServicePlanActionWithState(
   _previousState: CreateServicePlanFormState,
   formData: FormData,
 ): Promise<CreateServicePlanFormState> {
+  await requirePermission(PERMISSIONS.servicePlansWrite);
   const result = await createServicePlanFromForm(formData);
 
   if (result.error || !result.created) {
@@ -100,6 +104,7 @@ export async function createServicePlanSheetAction(
   _previousState: CreateServicePlanFormState,
   formData: FormData,
 ): Promise<CreateServicePlanFormState> {
+  await requirePermission(PERMISSIONS.servicePlansWrite);
   const result = await createServicePlanFromForm(formData);
 
   if (result.error || !result.created) {
@@ -114,6 +119,7 @@ export async function createServicePlanSheetAction(
 }
 
 export async function updateServicePlanAction(planId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.servicePlansWrite);
   const parsed = servicePlanFormSchema.safeParse(normalizePlanForm(formData));
 
   if (!parsed.success) {
@@ -143,6 +149,7 @@ export async function updateServicePlanAction(planId: string, formData: FormData
 }
 
 export async function generateVisitsForPlanAction(planId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.servicePlansWrite);
   const startDate = (formData.get("startDate") as string) ?? "";
   const endDate = (formData.get("endDate") as string) ?? "";
 
@@ -159,6 +166,7 @@ export async function generateVisitsForPlanAction(planId: string, formData: Form
 }
 
 export async function generateVisitsForActivePlansAction(formData: FormData) {
+  await requirePermission(PERMISSIONS.servicePlansWrite);
   const startDate = (formData.get("startDate") as string) ?? "";
   const endDate = (formData.get("endDate") as string) ?? "";
 

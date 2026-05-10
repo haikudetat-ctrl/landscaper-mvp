@@ -3,6 +3,8 @@ import { EmptyStateCard } from "@/components/empty-states/empty-state-card";
 import { StatusCard } from "@/components/status/status-card";
 import { StatusPill, type OpsStatus } from "@/components/status/status-pill";
 import { PageHeader } from "@/components/ui/page-header";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 const statuses: OpsStatus[] = ["scheduled", "completed", "skipped", "overdue", "paused", "needs_review"];
 
@@ -19,7 +21,9 @@ const demoJob = {
   assignedCrew: "Crew A",
 };
 
-export default function UiKitPage() {
+export default async function UiKitPage() {
+  await requirePagePermission(PERMISSIONS.supportAdmin);
+
   return (
     <div className="space-y-6">
       <PageHeader title="UI Kit" description="Reusable field-ops card system" />

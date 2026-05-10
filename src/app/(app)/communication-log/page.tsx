@@ -6,12 +6,15 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { listCommunicationLog } from "@/lib/db/communications";
 import { formatAddress, formatDateTime } from "@/lib/utils/format";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function CommunicationLogPage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await requirePagePermission(PERMISSIONS.communicationRead);
   const query = (await searchParams).q;
   const entries = await listCommunicationLog(query);
 

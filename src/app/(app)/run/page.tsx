@@ -2,8 +2,11 @@ import { DailyRunShell } from "@/components/daily-run/daily-run-shell";
 import { ActionCard, JobCard, mapVisitToJobCardData } from "@/components/cards";
 import { PageHeader } from "@/components/ui/page-header";
 import { getDailyRunData } from "@/lib/db/daily-run";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function RunPage() {
+  await requirePagePermission(PERMISSIONS.runView);
   const data = await getDailyRunData();
 
   return (

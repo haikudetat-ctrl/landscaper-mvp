@@ -6,8 +6,11 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getCommunicationLogById } from "@/lib/db/communications";
 import { formatAddress, formatClientName, formatDateTime } from "@/lib/utils/format";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function CommunicationLogDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission(PERMISSIONS.communicationRead);
   const { id } = await params;
   const entry = await getCommunicationLogById(id);
   const client = Array.isArray(entry.clients) ? entry.clients[0] : entry.clients;

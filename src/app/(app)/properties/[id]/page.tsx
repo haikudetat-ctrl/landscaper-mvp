@@ -8,8 +8,11 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { getPropertyById } from "@/lib/db/properties";
 import { formatAddress, formatCurrencyFromCents, formatDate } from "@/lib/utils/format";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission(PERMISSIONS.propertiesRead);
   const { id } = await params;
   const { property, servicePlans, upcomingVisits, recentInvoices } = await getPropertyById(id);
   const linkedClient = Array.isArray(property.clients) ? property.clients[0] : property.clients;

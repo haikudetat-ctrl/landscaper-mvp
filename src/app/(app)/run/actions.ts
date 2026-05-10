@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getCurrentUserMembership } from "@/lib/db/auth";
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { transitionServiceVisitState } from "@/lib/db/events";
 import { markVisitCompleted, markVisitPendingReactivation, markVisitSkipped } from "@/lib/db/service-visits";
 import { uploadVisitPhoto } from "@/lib/db/photos";
@@ -10,20 +11,13 @@ import { recordPayment } from "@/lib/db/invoices";
 import { saveTodayRunState, type RunPhase } from "@/lib/db/run-state";
 import { paymentMethods } from "@/lib/utils/constants";
 
-async function requireMembership() {
-  const { user, membership } = await getCurrentUserMembership();
-  if (!user || !membership) {
-    throw new Error("You must be signed in with an organization membership.");
-  }
-}
-
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
 }
 
 export async function completeRunVisitAction(visitId: string) {
-  await requireMembership();
+  await requirePermission(PERMISSIONS.runExecute);
   await markVisitCompleted(visitId);
   await saveTodayRunState({
     phase: "running",
@@ -37,7 +31,7 @@ export async function completeRunVisitAction(visitId: string) {
 }
 
 export async function startRunVisitAction(visitId: string) {
-  await requireMembership();
+  await requirePermission(PERMISSIONS.runExecute);
   await transitionServiceVisitState({
     visitId,
     eventType: "visit_started",
@@ -55,7 +49,7 @@ export async function startRunVisitAction(visitId: string) {
 }
 
 export async function completeRunVisitWithPhotoAction(visitId: string, formData: FormData) {
-  await requireMembership();
+  await requirePermission(PERMISSIONS.runExecute);
 
   const file = formData.get("photoFile");
   if (!(file instanceof File) || file.size === 0) {
@@ -83,7 +77,7 @@ export async function completeRunVisitWithPhotoAction(visitId: string, formData:
 }
 
 export async function skipRunVisitAction(visitId: string, reason: string, note: string | null) {
-  await requireMembership();
+  await requirePermission(PERMISSIONS.runExecute);
   await markVisitSkipped(visitId, reason, note);
   await saveTodayRunState({
     phase: "running",
@@ -98,7 +92,7 @@ export async function skipRunVisitAction(visitId: string, reason: string, note: 
 }
 
 export async function removeRunVisitFromTodayAction(visitId: string) {
-  await requireMembership();
+  await requirePermission(PERMISSIONS.runExecute);
   await markVisitPendingReactivation(visitId);
   await saveTodayRunState({
     phase: "confirm",
@@ -113,7 +107,7 @@ export async function removeRunVisitFromTodayAction(visitId: string) {
 }
 
 export async function markRunPaymentCollectedAction(formData: FormData) {
-  await requireMembership();
+  await requirePermission(PERMISSIONS.paymentsRecord);
 
   const invoiceId = readString(formData, "invoiceId");
   const method = readString(formData, "method");
@@ -146,7 +140,7 @@ export async function saveRunProgressAction(input: {
   activeVisitId?: string | null;
   confirmedToday?: boolean;
 }) {
-  await requireMembership();
+  await requirePermission(PERMISSIONS.runExecute);
   await saveTodayRunState({
     phase: input.phase,
     activeVisitId: input.activeVisitId ?? null,

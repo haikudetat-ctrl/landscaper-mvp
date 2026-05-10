@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { createInvoiceForVisit, recordPayment } from "@/lib/db/invoices";
 import { maybeString, parseInteger } from "@/lib/db/shared";
 import { createInvoiceSchema, recordPaymentSchema } from "@/lib/validation/invoice";
@@ -14,6 +16,7 @@ export type CreateInvoiceFormState = {
 };
 
 export async function createInvoiceFromVisitAction(visitId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.invoicesWrite);
   const dueDays = parseInteger(formData.get("dueDays")) ?? 14;
 
   const parsed = createInvoiceSchema.safeParse({
@@ -38,6 +41,7 @@ export async function createInvoiceFromVisitSheetAction(
   _previousState: CreateInvoiceFormState,
   formData: FormData,
 ): Promise<CreateInvoiceFormState> {
+  await requirePermission(PERMISSIONS.invoicesWrite);
   const dueDays = parseInteger(formData.get("dueDays")) ?? 14;
 
   const parsed = createInvoiceSchema.safeParse({
@@ -67,6 +71,7 @@ export async function createInvoiceFromVisitSheetAction(
 }
 
 export async function recordPaymentAction(invoiceId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.paymentsRecord);
   const parsed = recordPaymentSchema.safeParse({
     invoiceId,
     amount: Number(formData.get("amountCents") ?? 0),

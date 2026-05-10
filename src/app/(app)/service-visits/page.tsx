@@ -2,6 +2,8 @@ import { getServicePlanFormOptions } from "@/lib/db/service-plans";
 import { listServiceVisits } from "@/lib/db/service-visits";
 
 import { ServiceVisitsPageShell } from "./service-visits-page-shell";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 function toIsoDate(value: Date): string {
   const year = value.getFullYear();
@@ -26,6 +28,7 @@ export default async function ServiceVisitsPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; status?: string; view?: string }>;
 }) {
+  await requirePagePermission(PERMISSIONS.serviceVisitsRead);
   const params = await searchParams;
 
   const todayDate = new Date();

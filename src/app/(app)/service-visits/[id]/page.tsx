@@ -12,6 +12,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listVisitPhotos } from "@/lib/db/photos";
 import { getInvoiceByServiceVisitId, getServiceVisitById } from "@/lib/db/service-visits";
 import { formatAddress, formatCurrencyFromCents, formatDate, formatDateTime } from "@/lib/utils/format";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 import { createInvoiceFromVisitAction } from "@/app/(app)/invoices/actions";
 import {
@@ -24,6 +26,7 @@ import {
 } from "@/app/(app)/service-visits/actions";
 
 export default async function ServiceVisitDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission(PERMISSIONS.serviceVisitsRead);
   const { id } = await params;
   const visit = await getServiceVisitById(id);
   const photos = await listVisitPhotos(id);

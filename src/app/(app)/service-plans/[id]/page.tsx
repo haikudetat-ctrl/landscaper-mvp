@@ -13,8 +13,11 @@ import { getServicePlanById } from "@/lib/db/service-plans";
 import { formatAddress, formatCurrencyFromCents, formatDate } from "@/lib/utils/format";
 
 import { generateVisitsForPlanAction } from "@/app/(app)/service-plans/actions";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function ServicePlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission(PERMISSIONS.servicePlansRead);
   const { id } = await params;
   const { plan } = await getServicePlanById(id);
 

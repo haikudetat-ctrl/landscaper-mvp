@@ -11,8 +11,11 @@ import { paymentMethods } from "@/lib/utils/constants";
 import { formatAddress, formatClientName, formatCurrencyFromCents, formatDate } from "@/lib/utils/format";
 
 import { recordPaymentAction } from "@/app/(app)/invoices/actions";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission(PERMISSIONS.invoicesRead);
   const { id } = await params;
   const { invoice, balance, payments } = await getInvoiceById(id);
   const client = Array.isArray(invoice.clients) ? invoice.clients[0] : invoice.clients;

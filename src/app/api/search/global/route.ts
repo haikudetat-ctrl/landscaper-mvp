@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatAddress } from "@/lib/utils/format";
 
@@ -18,6 +20,12 @@ function toLikePattern(value: string): string {
 }
 
 export async function GET(request: NextRequest) {
+  try {
+    await requirePermission(PERMISSIONS.clientsRead);
+  } catch {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) {
     return NextResponse.json({ suggestions: [] as SearchSuggestion[] });

@@ -10,8 +10,11 @@ import { listCompletedVisitsMissingInvoice } from "@/lib/db/invoices";
 import { formatAddress, formatCurrencyFromCents, formatDate } from "@/lib/utils/format";
 
 import { createInvoiceFromVisitAction } from "@/app/(app)/invoices/actions";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function CreateInvoiceFromVisitPage() {
+  await requirePagePermission(PERMISSIONS.invoicesRead);
   const rows = await listCompletedVisitsMissingInvoice();
 
   return (

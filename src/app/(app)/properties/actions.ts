@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { createProperty, updateProperty } from "@/lib/db/properties";
 import { maybeString, parseBoolean } from "@/lib/db/shared";
 import { getConfiguredMapProvider } from "@/lib/maps";
@@ -82,6 +84,7 @@ async function createPropertyFromForm(formData: FormData) {
 }
 
 export async function createPropertyAction(formData: FormData) {
+  await requirePermission(PERMISSIONS.propertiesWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
   const result = await createPropertyFromForm(formData);
 
@@ -100,6 +103,7 @@ export async function createPropertyActionWithState(
   _previousState: CreatePropertyFormState,
   formData: FormData,
 ): Promise<CreatePropertyFormState> {
+  await requirePermission(PERMISSIONS.propertiesWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
   const result = await createPropertyFromForm(formData);
 
@@ -118,6 +122,7 @@ export async function createPropertySheetAction(
   _previousState: CreatePropertyFormState,
   formData: FormData,
 ): Promise<CreatePropertyFormState> {
+  await requirePermission(PERMISSIONS.propertiesWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
   const result = await createPropertyFromForm(formData);
 
@@ -137,6 +142,7 @@ export async function createPropertySheetAction(
 }
 
 export async function updatePropertyAction(propertyId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.propertiesWrite);
   const parsed = propertyFormSchema.safeParse(normalizePropertyForm(formData));
 
   if (!parsed.success) {

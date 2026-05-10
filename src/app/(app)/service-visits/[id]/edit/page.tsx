@@ -6,8 +6,11 @@ import { getServiceVisitById } from "@/lib/db/service-visits";
 import { visitStatuses } from "@/lib/utils/constants";
 
 import { updateVisitAction } from "@/app/(app)/service-visits/actions";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function EditVisitPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission(PERMISSIONS.serviceVisitsRead);
   const { id } = await params;
   const visit = await getServiceVisitById(id);
 

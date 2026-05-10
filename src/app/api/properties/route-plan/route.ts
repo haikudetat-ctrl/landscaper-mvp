@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { getConfiguredMapProvider } from "@/lib/maps";
 import type { MapStop } from "@/lib/maps/types";
 
@@ -20,6 +22,12 @@ const routePlanSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  try {
+    await requirePermission(PERMISSIONS.runView);
+  } catch {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   let payload: unknown;
 
   try {

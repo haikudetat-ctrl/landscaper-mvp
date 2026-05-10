@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { bulkRainDelayShift } from "@/lib/db/service-visits";
 
 type RequestBody = {
@@ -13,6 +15,12 @@ function isValidDateString(value: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  try {
+    await requirePermission(PERMISSIONS.scheduleShift);
+  } catch {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   let payload: RequestBody;
 
   try {

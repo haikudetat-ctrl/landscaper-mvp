@@ -7,12 +7,15 @@ import {
   createServicePlanActionWithState,
 } from "@/app/(app)/service-plans/actions";
 import { ServicePlanForm } from "@/app/(app)/service-plans/plan-form";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function NewServicePlanPage({
   searchParams,
 }: {
   searchParams: Promise<{ propertyId?: string; onboarding?: string }>;
 }) {
+  await requirePagePermission(PERMISSIONS.servicePlansRead);
   const params = await searchParams;
   const { properties, serviceTypes } = await getServicePlanFormOptions();
   const isOnboarding = params.onboarding === "1";

@@ -4,8 +4,11 @@ import { getPropertyById } from "@/lib/db/properties";
 
 import { updatePropertyAction } from "@/app/(app)/properties/actions";
 import { PropertyForm } from "@/app/(app)/properties/property-form";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function EditPropertyPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission(PERMISSIONS.propertiesRead);
   const { id } = await params;
   const { property, clients } = await getPropertyById(id);
 

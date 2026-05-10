@@ -1,12 +1,46 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { deriveAppRole, hasPermission, PERMISSIONS, type Permission } from "@/lib/auth/rbac";
 import type { Database } from "@/lib/types/database";
 
 const publicRoutes = ["/login", "/account-pending", "/hdz", "/intake"];
 
+const permissionRoutes: Array<{ prefix: string; permission: Permission }> = [
+  { prefix: "/clients/import", permission: PERMISSIONS.importsRun },
+  { prefix: "/communication-log", permission: PERMISSIONS.communicationRead },
+  { prefix: "/service-visits", permission: PERMISSIONS.serviceVisitsRead },
+  { prefix: "/service-plans", permission: PERMISSIONS.servicePlansRead },
+  { prefix: "/properties", permission: PERMISSIONS.propertiesRead },
+  { prefix: "/clients", permission: PERMISSIONS.clientsRead },
+  { prefix: "/invoices", permission: PERMISSIONS.invoicesRead },
+  { prefix: "/run", permission: PERMISSIONS.runView },
+  { prefix: "/testspace", permission: PERMISSIONS.supportAdmin },
+  { prefix: "/ui-kit", permission: PERMISSIONS.supportAdmin },
+  { prefix: "/", permission: PERMISSIONS.dashboardView },
+];
+
 function isPublicRoute(pathname: string) {
   return publicRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+function permissionForPath(pathname: string): Permission | null {
+  for (const route of permissionRoutes) {
+    if (route.prefix === "/" ? pathname === "/" : pathname === route.prefix || pathname.startsWith(`${route.prefix}/`)) {
+      return route.permission;
+    }
+  }
+
+  return null;
+}
+
+function defaultAuthorizedPath(role: ReturnType<typeof deriveAppRole>) {
+  if (hasPermission(role, PERMISSIONS.dashboardView)) return "/";
+  if (hasPermission(role, PERMISSIONS.runView)) return "/run";
+  if (hasPermission(role, PERMISSIONS.serviceVisitsRead)) return "/service-visits";
+  if (hasPermission(role, PERMISSIONS.propertiesRead)) return "/properties";
+  if (hasPermission(role, PERMISSIONS.clientsRead)) return "/clients";
+  return "/account-pending";
 }
 
 export async function proxy(request: NextRequest) {
@@ -53,7 +87,7 @@ export async function proxy(request: NextRequest) {
 
   const membershipResult = await supabase
     .from("organization_members")
-    .select("id, organization_id")
+    .select("id, organization_id, role")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -98,6 +132,22 @@ export async function proxy(request: NextRequest) {
       appUrl.pathname = "/";
       appUrl.search = "";
       return NextResponse.redirect(appUrl);
+    }
+
+    const appRole = deriveAppRole({
+      email: user.email,
+      membershipRole: membership.role,
+    });
+    const neededPermission = permissionForPath(pathname);
+
+    if (neededPermission && !hasPermission(appRole, neededPermission)) {
+      const fallbackPath = defaultAuthorizedPath(appRole);
+      if (pathname !== fallbackPath) {
+        const deniedUrl = request.nextUrl.clone();
+        deniedUrl.pathname = fallbackPath;
+        deniedUrl.searchParams.set("denied", pathname);
+        return NextResponse.redirect(deniedUrl);
+      }
     }
   }
 

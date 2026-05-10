@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { createClient, updateClient } from "@/lib/db/clients";
 import { maybeString, parseBoolean } from "@/lib/db/shared";
 import { clientFormSchema } from "@/lib/validation/client";
@@ -65,6 +67,7 @@ async function createClientFromForm(formData: FormData) {
 }
 
 export async function createClientAction(formData: FormData) {
+  await requirePermission(PERMISSIONS.clientsWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
   const result = await createClientFromForm(formData);
 
@@ -83,6 +86,7 @@ export async function createClientActionWithState(
   _previousState: CreateClientFormState,
   formData: FormData,
 ): Promise<CreateClientFormState> {
+  await requirePermission(PERMISSIONS.clientsWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
   const result = await createClientFromForm(formData);
 
@@ -101,6 +105,7 @@ export async function createClientSheetAction(
   _previousState: CreateClientFormState,
   formData: FormData,
 ): Promise<CreateClientFormState> {
+  await requirePermission(PERMISSIONS.clientsWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
   const result = await createClientFromForm(formData);
 
@@ -120,6 +125,7 @@ export async function createClientSheetAction(
 }
 
 export async function updateClientAction(clientId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.clientsWrite);
   const parsed = clientFormSchema.safeParse(normalizeClientForm(formData));
 
   if (!parsed.success) {

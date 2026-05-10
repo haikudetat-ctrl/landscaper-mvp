@@ -3,12 +3,15 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Views } from "@/lib/types/database";
 
 import { PropertiesPageShell } from "./properties-page-shell";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function PropertiesPage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await requirePagePermission(PERMISSIONS.propertiesRead);
   await searchParams;
   const supabase = createSupabaseServerClient();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import {
   bulkRainDelayShift,
   markVisitCompleted,
@@ -21,6 +23,7 @@ import {
 } from "@/lib/validation/service-visit";
 
 export async function updateVisitAction(visitId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.serviceVisitsWrite);
   const parsed = serviceVisitUpdateSchema.safeParse({
     scheduledDate: (formData.get("scheduledDate") as string) ?? "",
     status: (formData.get("status") as string) ?? "scheduled",
@@ -43,6 +46,7 @@ export async function updateVisitAction(visitId: string, formData: FormData) {
 }
 
 export async function completeVisitAction(visitId: string) {
+  await requirePermission(PERMISSIONS.serviceVisitsWrite);
   await markVisitCompleted(visitId);
 
   revalidatePath("/service-visits");
@@ -52,6 +56,7 @@ export async function completeVisitAction(visitId: string) {
 }
 
 export async function skipVisitAction(visitId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.serviceVisitsWrite);
   const parsed = serviceVisitSkipSchema.safeParse({
     skippedReason: maybeString(formData.get("skippedReason")) ?? "",
     skipNote: maybeString(formData.get("skipNote")) ?? "",
@@ -70,6 +75,7 @@ export async function skipVisitAction(visitId: string, formData: FormData) {
 }
 
 export async function markPendingReactivationAction(visitId: string) {
+  await requirePermission(PERMISSIONS.serviceVisitsWrite);
   await markVisitPendingReactivation(visitId);
 
   revalidatePath("/service-visits");
@@ -79,6 +85,7 @@ export async function markPendingReactivationAction(visitId: string) {
 }
 
 export async function rescheduleVisitAction(visitId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.serviceVisitsWrite);
   const parsed = serviceVisitRescheduleSchema.safeParse({
     scheduledDate: (formData.get("scheduledDate") as string) ?? "",
     notes: maybeString(formData.get("notes")) ?? "",
@@ -97,6 +104,7 @@ export async function rescheduleVisitAction(visitId: string, formData: FormData)
 }
 
 export async function rainDelayShiftAction(formData: FormData) {
+  await requirePermission(PERMISSIONS.scheduleShift);
   const fromDate = (formData.get("fromDate") as string) ?? "";
   const reason = maybeString(formData.get("reason")) ?? "Rain delay";
 
@@ -112,6 +120,7 @@ export async function rainDelayShiftAction(formData: FormData) {
 }
 
 export async function uploadVisitPhotoAction(visitId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.serviceVisitsWrite);
   const parsed = uploadVisitPhotoSchema.safeParse({
     visitId,
     photoType: (formData.get("photoType") as string) ?? "before",
@@ -140,6 +149,7 @@ export async function uploadVisitPhotoAction(visitId: string, formData: FormData
 }
 
 export async function setVisitInvoiceAmountAction(visitId: string, formData: FormData) {
+  await requirePermission(PERMISSIONS.serviceVisitsWrite);
   const quotedPrice = Number(formData.get("priceCents") ?? 0);
 
   if (Number.isNaN(quotedPrice) || quotedPrice < 0) {

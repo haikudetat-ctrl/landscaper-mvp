@@ -4,8 +4,11 @@ import { getServicePlanById } from "@/lib/db/service-plans";
 
 import { ServicePlanForm } from "@/app/(app)/service-plans/plan-form";
 import { updateServicePlanAction } from "@/app/(app)/service-plans/actions";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function EditServicePlanPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission(PERMISSIONS.servicePlansRead);
   const { id } = await params;
   const { plan, properties, serviceTypes } = await getServicePlanById(id);
 

@@ -5,25 +5,26 @@ import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import type { AppRole } from "@/lib/auth/rbac";
+import { hasPermission, PERMISSIONS } from "@/lib/auth/rbac";
 
 const navItems = [
-  { href: "/", label: "Dashboard" },
-  { href: "/testspace", label: "Testspace" },
-  { href: "/run", label: "Daily Run" },
-  { href: "/clients", label: "Clients" },
-  { href: "/properties", label: "Properties" },
-  { href: "/service-plans", label: "Service Plans" },
-  { href: "/service-visits", label: "Service Visits" },
-  { href: "/invoices", label: "Invoices" },
-  { href: "/communication-log", label: "Communication Log" },
+  { href: "/", label: "Dashboard", permission: PERMISSIONS.dashboardView },
+  { href: "/run", label: "Daily Run", permission: PERMISSIONS.runView },
+  { href: "/clients", label: "Clients", permission: PERMISSIONS.clientsRead },
+  { href: "/properties", label: "Properties", permission: PERMISSIONS.propertiesRead },
+  { href: "/service-plans", label: "Service Plans", permission: PERMISSIONS.servicePlansRead },
+  { href: "/service-visits", label: "Service Visits", permission: PERMISSIONS.serviceVisitsRead },
+  { href: "/invoices", label: "Invoices", permission: PERMISSIONS.invoicesRead },
+  { href: "/communication-log", label: "Communication Log", permission: PERMISSIONS.communicationRead },
 ];
 
 const mobilePrimaryNav = [
-  { href: "/", label: "Home" },
-  { href: "/run", label: "Run" },
-  { href: "/properties", label: "Properties" },
-  { href: "/invoices", label: "Invoices" },
-  { href: "/clients", label: "Clients" },
+  { href: "/", label: "Home", permission: PERMISSIONS.dashboardView },
+  { href: "/run", label: "Run", permission: PERMISSIONS.runView },
+  { href: "/properties", label: "Properties", permission: PERMISSIONS.propertiesRead },
+  { href: "/invoices", label: "Invoices", permission: PERMISSIONS.invoicesRead },
+  { href: "/clients", label: "Clients", permission: PERMISSIONS.clientsRead },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -31,14 +32,22 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function TopNav() {
+export function TopNav({ role }: { role: AppRole }) {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => hasPermission(role, item.permission)),
+    [role],
+  );
+  const visibleMobilePrimaryNav = useMemo(
+    () => mobilePrimaryNav.filter((item) => hasPermission(role, item.permission)),
+    [role],
+  );
 
   const activeLabel = useMemo(() => {
-    const item = navItems.find((navItem) => isActive(pathname, navItem.href));
+    const item = visibleNavItems.find((navItem) => isActive(pathname, navItem.href));
     return item?.label ?? "L.O.A.M";
-  }, [pathname]);
+  }, [pathname, visibleNavItems]);
 
   return (
     <>
@@ -48,7 +57,7 @@ export function TopNav() {
             L.O.A.M
           </div>
           <nav className="flex flex-wrap gap-1">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -97,7 +106,7 @@ export function TopNav() {
             className="mx-4 mt-20 rounded-2xl border border-emerald-200 bg-white/95 p-2 shadow-lg"
             onClick={(event) => event.stopPropagation()}
           >
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -117,8 +126,11 @@ export function TopNav() {
       ) : null}
 
       <nav className="fixed inset-x-0 bottom-0 z-40 bg-[#edf4ee]/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.25rem)] pt-1 backdrop-blur md:hidden">
-        <div className="grid grid-cols-5 gap-1">
-          {mobilePrimaryNav.map((item) => (
+        <div
+          className="grid gap-1"
+          style={{ gridTemplateColumns: `repeat(${Math.max(visibleMobilePrimaryNav.length, 1)}, minmax(0, 1fr))` }}
+        >
+          {visibleMobilePrimaryNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}

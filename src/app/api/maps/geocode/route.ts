@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { getConfiguredMapProvider } from "@/lib/maps";
 
 const geocodeSchema = z.object({
@@ -8,6 +10,12 @@ const geocodeSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  try {
+    await requirePermission(PERMISSIONS.propertiesWrite);
+  } catch {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   let payload: unknown;
 
   try {

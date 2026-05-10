@@ -8,8 +8,11 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { getClientDetail } from "@/lib/db/clients";
 import { formatAddress, formatClientName, formatCurrencyFromCents, formatDate } from "@/lib/utils/format";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission(PERMISSIONS.clientsRead);
   const { id } = await params;
   const { client, properties, invoices } = await getClientDetail(id);
 

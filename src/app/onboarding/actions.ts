@@ -4,6 +4,8 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 import { importClientsWithPlans, type ClientImportResult } from "@/lib/db/client-import";
 import { clientImportPayloadSchema, type ClientImportRowInput } from "@/lib/validation/client-import";
@@ -144,6 +146,7 @@ export async function createCompanyProfileAction(
 }
 
 export async function startOnboardingAction() {
+  await requirePermission(PERMISSIONS.settingsManage);
   const { supabase, organizationId } = await loadMembership();
 
   const result = await supabase
@@ -162,6 +165,7 @@ export async function importOnboardingClientsAction(
   _previousState: OnboardingImportState,
   formData: FormData,
 ): Promise<OnboardingImportState> {
+  await requirePermission(PERMISSIONS.importsRun);
   const { supabase, organizationId } = await loadMembership();
   const payload = formData.get("payload");
 
@@ -223,6 +227,7 @@ export async function importOnboardingClientsAction(
 }
 
 export async function completeOnboardingAction() {
+  await requirePermission(PERMISSIONS.settingsManage);
   const { supabase, organizationId } = await loadMembership();
 
   const result = await supabase

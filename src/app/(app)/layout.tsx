@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { deriveAppRole } from "@/lib/auth/rbac";
 import { createSupabaseAuthServerClient } from "@/lib/supabase/server";
 import { getCurrentUserMembership } from "@/lib/db/auth";
 
@@ -30,5 +31,10 @@ export default async function MainAppLayout({ children }: { children: ReactNode 
     redirect("/onboarding");
   }
 
-  return <AppShell>{children}</AppShell>;
+  const role = deriveAppRole({
+    email: user.email,
+    membershipRole: membership.role,
+  });
+
+  return <AppShell role={role}>{children}</AppShell>;
 }

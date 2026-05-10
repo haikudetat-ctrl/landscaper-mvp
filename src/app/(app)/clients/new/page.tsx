@@ -3,12 +3,15 @@ import { PageHeader } from "@/components/ui/page-header";
 
 import { createClientAction, createClientActionWithState } from "@/app/(app)/clients/actions";
 import { ClientForm } from "@/app/(app)/clients/client-form";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function NewClientPage({
   searchParams,
 }: {
   searchParams: Promise<{ onboarding?: string }>;
 }) {
+  await requirePagePermission(PERMISSIONS.clientsRead);
   const params = await searchParams;
   const isOnboarding = params.onboarding === "1";
 

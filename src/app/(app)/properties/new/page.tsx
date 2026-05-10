@@ -4,12 +4,15 @@ import { listClientOptions } from "@/lib/db/properties";
 
 import { createPropertyAction, createPropertyActionWithState } from "@/app/(app)/properties/actions";
 import { PropertyForm } from "@/app/(app)/properties/property-form";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function NewPropertyPage({
   searchParams,
 }: {
   searchParams: Promise<{ clientId?: string; onboarding?: string }>;
 }) {
+  await requirePagePermission(PERMISSIONS.propertiesRead);
   const params = await searchParams;
   const clients = await listClientOptions();
   const isOnboarding = params.onboarding === "1";

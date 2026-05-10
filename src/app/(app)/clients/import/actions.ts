@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requirePermission } from "@/lib/auth/authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 import { importClientsWithPlans, type ClientImportResult } from "@/lib/db/client-import";
 import { clientImportPayloadSchema, type ClientImportRowInput } from "@/lib/validation/client-import";
 
@@ -79,6 +81,7 @@ export async function importClientsAction(
   _previousState: ClientImportFormState,
   formData: FormData,
 ): Promise<ClientImportFormState> {
+  await requirePermission(PERMISSIONS.importsRun);
   const payload = formData.get("payload");
 
   if (typeof payload !== "string") {

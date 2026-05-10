@@ -11,8 +11,11 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { getDashboardData } from "@/lib/db/dashboard";
 import { formatAddress, formatCurrencyFromCents, formatDate } from "@/lib/utils/format";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function DashboardPage() {
+  await requirePagePermission(PERMISSIONS.dashboardView);
   const data = await getDashboardData();
 
   return (

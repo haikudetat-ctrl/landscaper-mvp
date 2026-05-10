@@ -4,8 +4,11 @@ import { getServicePlanFormOptions } from "@/lib/db/service-plans";
 
 import { ClientImportWizard } from "./client-import-wizard";
 import { importClientsAction } from "./actions";
+import { requirePagePermission } from "@/lib/auth/page-authorization";
+import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function ClientImportPage() {
+  await requirePagePermission(PERMISSIONS.importsRun);
   const { serviceTypes } = await getServicePlanFormOptions();
 
   return (
