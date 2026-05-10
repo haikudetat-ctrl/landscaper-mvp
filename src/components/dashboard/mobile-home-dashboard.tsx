@@ -85,8 +85,8 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
           ? `Low ${data.weather.tempLow}\u00b0`
           : null;
 
-  const fixedCardClass = "h-[clamp(112px,16vh,148px)] rounded-2xl border-[0.5px] border-[#b0dcc1] p-2.5 shadow-sm";
-  const topPanelClass = "h-[clamp(112px,16vh,148px)]";
+  const fixedCardClass = "h-[clamp(104px,15vh,140px)] rounded-2xl border-[0.5px] border-[#b0dcc1] p-2.5 shadow-sm";
+  const topPanelClass = "h-[clamp(104px,15vh,140px)]";
   const cardCyanClass = "bg-[#fafbfb]";
   const expectedRevenue = Math.max(data.expectedMonthlyRevenue, 0);
   const collectedRevenue = Math.max(data.collectedMoneyThisMonth, 0);
@@ -145,9 +145,9 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
   }
 
   return (
-    <div className="-mx-4 -mt-[15px] -mb-24 md:hidden">
-      <div className="grid h-[calc(100dvh-9.5rem)] grid-rows-[minmax(0,1fr)_minmax(0,5fr)_minmax(0,1fr)] overflow-hidden bg-gradient-to-br from-[#6ab967] to-[#287b40]">
-        <section className="relative px-4 pt-[5px] pb-[22px]">
+    <div className="-mx-4 -mt-[15px] md:hidden">
+      <div className="grid min-h-[calc(100dvh-8.25rem)] grid-rows-[auto_1fr_auto] bg-gradient-to-br from-[#6ab967] to-[#287b40]">
+        <section className="relative px-4 pt-[5px] pb-3">
           <div className="relative">
             <svg
               viewBox="0 0 24 24"
@@ -204,7 +204,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
           ) : null}
         </section>
 
-        <section className="overflow-hidden bg-white px-[18px] pt-[14px] pb-[6px]">
+        <section className="overflow-y-auto bg-white px-[18px] pt-[14px] pb-[calc(env(safe-area-inset-bottom)+1rem)]">
           <div className="grid h-full grid-cols-2 gap-2.5">
             <div className={`${topPanelClass} flex h-full flex-col justify-between px-0.5`}>
                 <div className="space-y-1">
@@ -392,15 +392,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
           </div>
         </section>
 
-        <section
-          className="bg-gradient-to-br from-[#6ab967] to-[#287b40]"
-          style={{
-            boxShadow:
-              "inset 0 10px 10px -10px rgba(0, 0, 0, 0.25), inset 0 -10px 10px -10px rgba(0, 0, 0, 0.25)",
-          }}
-        >
-          <div className="h-[10px] bg-[#fafbfb]" />
-        </section>
+        <section className="h-0 bg-transparent" />
       </div>
 
       {isRevenueModalOpen ? (
