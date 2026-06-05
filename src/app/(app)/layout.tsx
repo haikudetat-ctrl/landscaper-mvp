@@ -36,5 +36,17 @@ export default async function MainAppLayout({ children }: { children: ReactNode 
     membershipRole: membership.role,
   });
 
-  return <AppShell role={role}>{children}</AppShell>;
+  const organizationName = Array.isArray(membership.organizations)
+    ? membership.organizations[0]?.name ?? null
+    : membership.organizations?.name ?? null;
+
+  return (
+    <AppShell
+      role={role}
+      userEmail={user.email ?? null}
+      organizationName={organizationName}
+    >
+      {children}
+    </AppShell>
+  );
 }

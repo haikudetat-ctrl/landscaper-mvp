@@ -28,7 +28,7 @@ function normalizeClientForm(formData: FormData) {
   };
 }
 
-async function createClientFromForm(formData: FormData) {
+async function createClientFromForm(formData: FormData, organizationId: string) {
   const parsed = clientFormSchema.safeParse(normalizeClientForm(formData));
 
   if (!parsed.success) {
@@ -51,6 +51,7 @@ async function createClientFromForm(formData: FormData) {
   }
 
   const created = await createClient({
+    organization_id: organizationId,
     full_name: fullName,
     primary_email: values.email || null,
     primary_phone: values.phone || null,
@@ -67,9 +68,9 @@ async function createClientFromForm(formData: FormData) {
 }
 
 export async function createClientAction(formData: FormData) {
-  await requirePermission(PERMISSIONS.clientsWrite);
+  const auth = await requirePermission(PERMISSIONS.clientsWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
-  const result = await createClientFromForm(formData);
+  const result = await createClientFromForm(formData, auth.organizationId);
 
   if (result.error || !result.created) {
     throw new Error(result.error ?? "Unable to create client");
@@ -86,9 +87,9 @@ export async function createClientActionWithState(
   _previousState: CreateClientFormState,
   formData: FormData,
 ): Promise<CreateClientFormState> {
-  await requirePermission(PERMISSIONS.clientsWrite);
+  const auth = await requirePermission(PERMISSIONS.clientsWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
-  const result = await createClientFromForm(formData);
+  const result = await createClientFromForm(formData, auth.organizationId);
 
   if (result.error || !result.created) {
     return { error: result.error ?? "Unable to create client", success: null, createdId: null };
@@ -105,9 +106,9 @@ export async function createClientSheetAction(
   _previousState: CreateClientFormState,
   formData: FormData,
 ): Promise<CreateClientFormState> {
-  await requirePermission(PERMISSIONS.clientsWrite);
+  const auth = await requirePermission(PERMISSIONS.clientsWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
-  const result = await createClientFromForm(formData);
+  const result = await createClientFromForm(formData, auth.organizationId);
 
   if (result.error || !result.created) {
     return { error: result.error ?? "Unable to create client", success: null, createdId: null };
@@ -125,7 +126,7 @@ export async function createClientSheetAction(
 }
 
 export async function updateClientAction(clientId: string, formData: FormData) {
-  await requirePermission(PERMISSIONS.clientsWrite);
+  const auth = await requirePermission(PERMISSIONS.clientsWrite);
   const parsed = clientFormSchema.safeParse(normalizeClientForm(formData));
 
   if (!parsed.success) {
@@ -141,14 +142,18 @@ export async function updateClientAction(clientId: string, formData: FormData) {
     throw new Error("Client name is required.");
   }
 
-  await updateClient(clientId, {
-    full_name: fullName,
-    primary_email: values.email || null,
-    primary_phone: values.phone || null,
-    billing_notes: values.billingAddress || null,
-    cash_collection_notes: values.notes || null,
-    is_active: values.isActive,
-  });
+  await updateClient(
+    clientId,
+    {
+      full_name: fullName,
+      primary_email: values.email || null,
+      primary_phone: values.phone || null,
+      billing_notes: values.billingAddress || null,
+      cash_collection_notes: values.notes || null,
+      is_active: values.isActive,
+    },
+    auth.organizationId,
+  );
 
   revalidatePath("/clients");
   revalidatePath(`/clients/${clientId}`);

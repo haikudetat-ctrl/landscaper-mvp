@@ -8,7 +8,7 @@ BEGIN;
 -- LOCAL RESET OPTION (commented out by default)
 -- Uncomment only for local development resets.
 -- TRUNCATE TABLE
---   public.app_events,
+--   public.events,
 --   public.daily_run_state,
 --   public.communication_log,
 --   public.visit_photos,
@@ -1841,7 +1841,7 @@ SELECT public.refresh_invoice_status('66b0e67e-bc5b-4de4-ba2c-5c84913ecfc6');
 SELECT public.refresh_invoice_status('cee0070f-f55f-4b71-8536-0f2aebefc1b4');
 SELECT public.refresh_invoice_status('b966b5e4-66a9-491d-931c-205d8c1867b6');
 
--- Optional newer tables: app_events + daily_run_state (if present in your local schema).
+-- Optional newer tables: events + daily_run_state (if present in your local schema).
 DO $$
 DECLARE
   v_actor uuid;
@@ -1862,8 +1862,8 @@ BEGIN
     DO UPDATE SET phase = EXCLUDED.phase, active_visit_id = EXCLUDED.active_visit_id, confirmed_today = EXCLUDED.confirmed_today, metadata = EXCLUDED.metadata, updated_at = now();
   END IF;
 
-  IF to_regclass('public.app_events') IS NOT NULL THEN
-    INSERT INTO public.app_events (tenant_id, actor_id, entity_type, entity_id, event_type, payload, metadata, source)
+  IF to_regclass('public.events') IS NOT NULL THEN
+    INSERT INTO public.events (organization_id, actor_user_id, entity_type, entity_id, event_type, metadata)
     SELECT
       '0f0f6e4a-9ad9-438a-b064-1f42b7100001',
       v_actor,
@@ -1875,9 +1875,7 @@ BEGIN
         WHEN sv.status = 'rescheduled' THEN 'visit_rescheduled'
         ELSE 'visit_scheduled'
       END,
-      jsonb_build_object('seed', true),
-      jsonb_build_object('script', 'generate-seed.ts'),
-      'seed'
+      jsonb_build_object('seed', true, 'script', 'generate-seed.ts', 'source', 'seed')
     FROM public.service_visits sv
     ORDER BY sv.created_at
     LIMIT 200;

@@ -8,7 +8,7 @@ export interface ClientCardData {
   email?: string | null;
   address?: string | null;
   balance?: number | null;
-  status: "scheduled" | "completed" | "skipped" | "overdue" | "paused" | "needs_review";
+  status: string;
   paymentPreference?: string | null;
   lastServiceDate?: string | null;
   nextServiceDate?: string | null;

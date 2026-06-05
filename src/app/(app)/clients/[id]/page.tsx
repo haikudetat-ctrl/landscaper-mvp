@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { getClientDetail } from "@/lib/db/clients";
 import { formatAddress, formatClientName, formatCurrencyFromCents, formatDate } from "@/lib/utils/format";
@@ -14,20 +14,28 @@ import { PERMISSIONS } from "@/lib/auth/rbac";
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePagePermission(PERMISSIONS.clientsRead);
   const { id } = await params;
-  const { client, properties, invoices } = await getClientDetail(id);
+  const { client, properties, invoices, serviceHistory, issues } = await getClientDetail(id);
 
   return (
     <div className="space-y-4">
       <PageHeader
         title={formatClientName(client)}
         description="Client detail view"
-        actions={<LinkButton href={`/clients/${id}/edit`} label="Edit client" />}
+        actions={
+          <>
+            <LinkButton href={`/properties/new?clientId=${id}`} label="Add property" />
+            <LinkButton href={`/clients/${id}/edit`} label="Edit client" tone="secondary" />
+          </>
+        }
       />
 
       <section className="grid gap-4 lg:grid-cols-3">
         <SectionCard title="Contact">
           <p>{client.primary_email ?? "No email"}</p>
           <p>{client.primary_phone ?? "No phone"}</p>
+          <p className="mt-2 text-sm text-zinc-700">
+            Payment preference: {client.payment_method_preference ?? "Not set"}
+          </p>
           <p className="mt-2 text-sm text-zinc-600">{client.billing_notes ?? "No billing notes"}</p>
         </SectionCard>
 
@@ -37,7 +45,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
         <SectionCard title="Linked Properties">
           <p className="text-2xl font-semibold">{properties.length}</p>
-          <Link href="/properties/new" className="text-sm underline">
+          <Link href={`/properties/new?clientId=${id}`} className="text-sm underline">
             Add property
           </Link>
         </SectionCard>
@@ -45,7 +53,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
       <SectionCard title="Properties">
         {properties.length === 0 ? (
-          <EmptyState title="No properties linked to this client" />
+          <EmptyState variant="inline" title="No properties linked to this client" />
         ) : (
           <>
             <div className="space-y-2 md:hidden">
@@ -86,9 +94,58 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         )}
       </SectionCard>
 
+      <SectionCard title="Service History">
+        {serviceHistory.length === 0 ? (
+          <EmptyState variant="inline" title="No service history yet" />
+        ) : (
+          <div className="space-y-2">
+            {serviceHistory.map((visit) => {
+              const property = Array.isArray(visit.properties) ? visit.properties[0] : visit.properties;
+              return (
+                <Link
+                  key={visit.id}
+                  href={`/service-visits/${visit.id}`}
+                  className="block rounded-md border border-zinc-200 bg-zinc-50 p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-zinc-900">{formatDate(visit.scheduled_date)}</p>
+                    <StatusPill status={visit.status} />
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-600">{formatAddress(property ?? {})}</p>
+                  <p className="mt-1 text-xs font-medium text-zinc-800">
+                    {formatCurrencyFromCents(visit.quoted_price ?? 0)}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Open Issues">
+        {issues.length === 0 ? (
+          <EmptyState variant="inline" title="No open issues for this customer" />
+        ) : (
+          <div className="space-y-2">
+            {issues.map((issue) => (
+              <div key={issue.id} className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-zinc-900">{issue.title}</p>
+                  <StatusPill status={issue.status} />
+                </div>
+                <p className="mt-1 text-xs uppercase tracking-[0.1em] text-zinc-600">
+                  Severity: {issue.severity}
+                </p>
+                <p className="mt-1 text-xs text-zinc-600">Created: {formatDate(issue.created_at)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
       <SectionCard title="Invoices">
         {invoices.length === 0 ? (
-          <EmptyState title="No invoices for this client" />
+          <EmptyState variant="inline" title="No invoices for this client" />
         ) : (
           <>
             <div className="space-y-2 md:hidden">

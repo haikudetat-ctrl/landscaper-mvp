@@ -1,7 +1,7 @@
 import { ActionCard, AlertCard, ClientCard, InvoiceCard, JobCard, MetricCard, PropertyCard } from "@/components/cards";
-import { EmptyStateCard } from "@/components/empty-states/empty-state-card";
 import { StatusCard } from "@/components/status/status-card";
 import { StatusPill, type OpsStatus } from "@/components/status/status-pill";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { requirePagePermission } from "@/lib/auth/page-authorization";
 import { PERMISSIONS } from "@/lib/auth/rbac";
@@ -108,13 +108,13 @@ export default async function UiKitPage() {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">
-        <EmptyStateCard
+        <EmptyState variant="card"
           icon={<span>0</span>}
           headline="No jobs scheduled today"
           helperText="Create a plan or generate visits to populate the run."
           ctaLabel="Create job"
         />
-        <EmptyStateCard
+        <EmptyState variant="card"
           icon={<span>0</span>}
           headline="No photos uploaded"
           helperText="Crew snapshots will appear here for quality tracking."

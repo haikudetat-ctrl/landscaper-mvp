@@ -1,6 +1,7 @@
 export const planFrequencies = [
   "weekly",
   "biweekly",
+  "monthly",
   "one-time",
   "seasonal",
   "custom-interval",

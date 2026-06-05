@@ -5,6 +5,7 @@ import type { Views } from "@/lib/types/database";
 import { PropertiesPageShell } from "./properties-page-shell";
 import { requirePagePermission } from "@/lib/auth/page-authorization";
 import { PERMISSIONS } from "@/lib/auth/rbac";
+import { requireOrgContext } from "@/lib/db/shared";
 
 export default async function PropertiesPage({
   searchParams,
@@ -12,6 +13,7 @@ export default async function PropertiesPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   await requirePagePermission(PERMISSIONS.propertiesRead);
+  const { orgId } = await requireOrgContext();
   await searchParams;
   const supabase = createSupabaseServerClient();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
@@ -22,6 +24,7 @@ export default async function PropertiesPage({
     supabase
       .from("v_today_jobs")
       .select("*")
+      .eq("organization_id", orgId)
       .eq("scheduled_date", today)
       .not("visit_status", "in", "(completed,canceled)")
       .order("scheduled_position", { ascending: true, nullsFirst: false }),
@@ -34,9 +37,6 @@ export default async function PropertiesPage({
       properties={properties}
       clients={clients}
       todayOpenJobs={todayOpenJobs}
-      mapProvider={process.env.NEXT_PUBLIC_MAP_PROVIDER === "mapbox" ? "mapbox" : "osm"}
-      mapboxToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-      canRoute={Boolean(process.env.MAPBOX_ACCESS_TOKEN || process.env.OPENROUTESERVICE_API_KEY)}
     />
   );
 }

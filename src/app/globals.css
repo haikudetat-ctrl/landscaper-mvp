@@ -2,18 +2,22 @@
 @import "mapbox-gl/dist/mapbox-gl.css";
 
 :root {
-  --background: #e9efea;
-  --foreground: #1d2c22;
-  --brand-500: #2f8a46;
-  --brand-400: #6ab967;
-  --brand-300: #8fd184;
-  --surface-0: #f9fcf9;
-  --surface-1: #f3f7f3;
-  --line-1: #b9d8c0;
-  --line-2: #9dcaab;
-  --text-strong: #1d2c22;
-  --text-mid: #4b6957;
-  --text-soft: #718f7c;
+  --background: #dde3db;
+  --foreground: #172119;
+  --brand-700: #1f4d33;
+  --brand-600: #29623e;
+  --brand-500: #317345;
+  --brand-400: #4f8b50;
+  --brand-300: #84b95a;
+  --accent-lime: #a7c957;
+  --surface-0: #f4f6f2;
+  --surface-1: #e9eee7;
+  --surface-2: #dfe7dd;
+  --line-1: #b8c6b6;
+  --line-2: #a0b19f;
+  --text-strong: #172119;
+  --text-mid: #33463a;
+  --text-soft: #5c7062;
 }
 
 @theme inline {
@@ -28,7 +32,9 @@
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #e3ede6 0%, #ecf2ed 30%, #e9efea 100%);
+  background:
+    radial-gradient(115% 70% at 8% 0%, rgba(79, 139, 80, 0.18) 0%, rgba(221, 227, 219, 0) 60%),
+    linear-gradient(180deg, #d7ded7 0%, #dfe5de 32%, #dde3db 100%);
   color: var(--foreground);
   font-family: var(--font-geist-sans), "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -48,7 +54,7 @@ a {
 }
 
 [class~="border-zinc-100"] {
-  border-color: #d9eadc;
+  border-color: #c7d3c5;
 }
 
 [class~="divide-zinc-200"] {
@@ -60,7 +66,7 @@ a {
 }
 
 [class~="bg-zinc-100"] {
-  background-color: #e5efe7;
+  background-color: var(--surface-2);
 }
 
 [class~="text-zinc-900"] {
@@ -68,7 +74,7 @@ a {
 }
 
 [class~="text-zinc-800"] {
-  color: #31503e;
+  color: #253529;
 }
 
 [class~="text-zinc-700"] {
@@ -76,7 +82,7 @@ a {
 }
 
 [class~="text-zinc-600"] {
-  color: #5e7b69;
+  color: #4a5f52;
 }
 
 [class~="text-zinc-500"] {
@@ -92,11 +98,11 @@ a {
 }
 
 [class~="shadow-sm"] {
-  box-shadow: 0 10px 24px -16px rgba(24, 108, 49, 0.42);
+  box-shadow: 0 10px 24px -16px rgba(20, 44, 31, 0.36);
 }
 
 [class~="shadow-lg"] {
-  box-shadow: 0 22px 44px -26px rgba(24, 108, 49, 0.48);
+  box-shadow: 0 22px 44px -26px rgba(16, 34, 24, 0.42);
 }
 
 [class~="bg-zinc-900"],
@@ -117,5 +123,73 @@ button[class~="bg-zinc-800"]:focus-visible,
 a[class~="bg-zinc-900"]:focus-visible,
 a[class~="bg-zinc-800"]:focus-visible {
   color: #fff;
-  filter: saturate(1.08) brightness(0.96);
+  filter: saturate(1.04) brightness(0.94);
+}
+
+[class~="border-emerald-200"] {
+  border-color: #a7b9a7;
+}
+
+[class~="border-emerald-300"] {
+  border-color: #90a88f;
+}
+
+[class~="bg-emerald-50"] {
+  background-color: #e6ece5;
+}
+
+[class~="bg-emerald-100"] {
+  background-color: #d9e3d8;
+}
+
+[class~="text-emerald-800"] {
+  color: #234f34;
+}
+
+[class~="text-emerald-900"] {
+  color: #183d2a;
+}
+
+[class~="bg-blue-50"] {
+  background-color: #e3e8e4;
+}
+
+[class~="bg-blue-100"] {
+  background-color: #d4ddd8;
+}
+
+[class~="text-blue-800"] {
+  color: #2d483a;
+}
+
+[class~="text-blue-900"] {
+  color: #1c3127;
+}
+
+[class~="border-blue-200"] {
+  border-color: #a0b0a7;
+}
+
+[class~="border-blue-300"] {
+  border-color: #8ba195;
+}
+
+[class~="border-amber-300"] {
+  border-color: #b8a977;
+}
+
+[class~="bg-amber-50"] {
+  background-color: #f1ecd8;
+}
+
+[class~="bg-amber-100"] {
+  background-color: #e8e0c2;
+}
+
+[class~="text-amber-800"] {
+  color: #5d4f24;
+}
+
+[class~="text-amber-900"] {
+  color: #4d421d;
 }

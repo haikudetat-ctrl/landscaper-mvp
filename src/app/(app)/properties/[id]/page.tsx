@@ -1,20 +1,33 @@
 import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { ActivityNotes } from "@/components/comments/activity-notes";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
+import { getAuthorizationContext } from "@/lib/auth/authorization";
+import { listCommentsForEntity } from "@/lib/db/comments";
 import { getPropertyById } from "@/lib/db/properties";
+import { listTimelineEvents } from "@/lib/db/timeline";
 import { formatAddress, formatCurrencyFromCents, formatDate } from "@/lib/utils/format";
 import { requirePagePermission } from "@/lib/auth/page-authorization";
 import { PERMISSIONS } from "@/lib/auth/rbac";
 
 export default async function PropertyDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePagePermission(PERMISSIONS.propertiesRead);
+  const auth = await getAuthorizationContext();
   const { id } = await params;
-  const { property, servicePlans, upcomingVisits, recentInvoices } = await getPropertyById(id);
+  const [
+    { property, servicePlans, upcomingVisits, recentInvoices, serviceHistory, openIssues },
+    comments,
+    timeline,
+  ] = await Promise.all([
+    getPropertyById(id),
+    listCommentsForEntity("property", id),
+    listTimelineEvents({ entityType: "property", entityId: id }),
+  ]);
   const linkedClient = Array.isArray(property.clients) ? property.clients[0] : property.clients;
 
   return (
@@ -41,12 +54,71 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
         </SectionCard>
       </section>
 
+      <SectionCard title="Activity & Notes">
+        <ActivityNotes
+          entityType="property"
+          entityId={id}
+          returnPath={`/properties/${id}`}
+          comments={comments}
+          events={timeline}
+          currentUserId={auth.userId}
+          placeholder="Example: Use side gate, avoid beds near mailbox, customer prefers afternoons"
+          emptyMessage="No property memory yet."
+        />
+      </SectionCard>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <SectionCard title="Service History">
+          {serviceHistory.length === 0 ? (
+            <EmptyState variant="inline" title="No service history for this property" />
+          ) : (
+            <div className="space-y-2">
+              {serviceHistory.map((visit) => (
+                <Link
+                  key={visit.id}
+                  href={`/service-visits/${visit.id}`}
+                  className="block rounded-md border border-zinc-200 bg-zinc-50 p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-zinc-900">{formatDate(visit.scheduled_date)}</p>
+                    <StatusPill status={visit.status} />
+                  </div>
+                  <p className="mt-1 text-xs font-medium text-zinc-800">
+                    {formatCurrencyFromCents(visit.quoted_price ?? 0)}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Open Issues">
+          {openIssues.length === 0 ? (
+            <EmptyState variant="inline" title="No open issues at this property" />
+          ) : (
+            <div className="space-y-2">
+              {openIssues.map((issue) => (
+                <div key={issue.id} className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-zinc-900">{issue.title}</p>
+                    <StatusPill status={issue.status} />
+                  </div>
+                  <p className="mt-1 text-xs uppercase tracking-[0.1em] text-zinc-600">
+                    Severity: {issue.severity}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </section>
+
       <SectionCard
         title="Service Plans"
         right={<Link href="/service-plans/new" className="text-sm underline">Add plan</Link>}
       >
         {servicePlans.length === 0 ? (
-          <EmptyState title="No service plans for this property" />
+          <EmptyState variant="inline" title="No service plans for this property" />
         ) : (
           <>
             <div className="space-y-2 md:hidden">
@@ -99,7 +171,7 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
 
       <SectionCard title="Upcoming Visits" right={<Link href="/service-visits" className="text-sm underline">Open visits</Link>}>
         {upcomingVisits.length === 0 ? (
-          <EmptyState title="No upcoming visits" />
+          <EmptyState variant="inline" title="No upcoming visits" />
         ) : (
           <>
             <div className="space-y-2 md:hidden">
@@ -151,7 +223,7 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
 
       <SectionCard title="Recent Invoices">
         {recentInvoices.length === 0 ? (
-          <EmptyState title="No invoices for this property" />
+          <EmptyState variant="inline" title="No invoices for this property" />
         ) : (
           <>
             <div className="space-y-2 md:hidden">

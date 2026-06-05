@@ -41,7 +41,7 @@ function normalizePlanForm(formData: FormData) {
   };
 }
 
-async function createServicePlanFromForm(formData: FormData) {
+async function createServicePlanFromForm(formData: FormData, organizationId: string) {
   const parsed = servicePlanFormSchema.safeParse(normalizePlanForm(formData));
 
   if (!parsed.success) {
@@ -54,6 +54,7 @@ async function createServicePlanFromForm(formData: FormData) {
   const values = parsed.data;
 
   const created = await createServicePlan({
+    organization_id: organizationId,
     property_id: values.propertyId,
     service_type_id: values.serviceTypeId,
     plan_name: values.name,
@@ -76,8 +77,8 @@ async function createServicePlanFromForm(formData: FormData) {
 }
 
 export async function createServicePlanAction(formData: FormData) {
-  await requirePermission(PERMISSIONS.servicePlansWrite);
-  const result = await createServicePlanFromForm(formData);
+  const auth = await requirePermission(PERMISSIONS.servicePlansWrite);
+  const result = await createServicePlanFromForm(formData, auth.organizationId);
 
   if (result.error || !result.created) {
     throw new Error(result.error ?? "Unable to create service plan");
@@ -90,8 +91,8 @@ export async function createServicePlanActionWithState(
   _previousState: CreateServicePlanFormState,
   formData: FormData,
 ): Promise<CreateServicePlanFormState> {
-  await requirePermission(PERMISSIONS.servicePlansWrite);
-  const result = await createServicePlanFromForm(formData);
+  const auth = await requirePermission(PERMISSIONS.servicePlansWrite);
+  const result = await createServicePlanFromForm(formData, auth.organizationId);
 
   if (result.error || !result.created) {
     return { error: result.error ?? "Unable to create service plan", success: null, createdId: null };
@@ -104,8 +105,8 @@ export async function createServicePlanSheetAction(
   _previousState: CreateServicePlanFormState,
   formData: FormData,
 ): Promise<CreateServicePlanFormState> {
-  await requirePermission(PERMISSIONS.servicePlansWrite);
-  const result = await createServicePlanFromForm(formData);
+  const auth = await requirePermission(PERMISSIONS.servicePlansWrite);
+  const result = await createServicePlanFromForm(formData, auth.organizationId);
 
   if (result.error || !result.created) {
     return { error: result.error ?? "Unable to create service plan", success: null, createdId: null };
@@ -119,7 +120,7 @@ export async function createServicePlanSheetAction(
 }
 
 export async function updateServicePlanAction(planId: string, formData: FormData) {
-  await requirePermission(PERMISSIONS.servicePlansWrite);
+  const auth = await requirePermission(PERMISSIONS.servicePlansWrite);
   const parsed = servicePlanFormSchema.safeParse(normalizePlanForm(formData));
 
   if (!parsed.success) {
@@ -129,6 +130,7 @@ export async function updateServicePlanAction(planId: string, formData: FormData
   const values = parsed.data;
 
   await updateServicePlan(planId, {
+    organization_id: auth.organizationId,
     property_id: values.propertyId,
     service_type_id: values.serviceTypeId,
     plan_name: values.name,
@@ -149,7 +151,7 @@ export async function updateServicePlanAction(planId: string, formData: FormData
 }
 
 export async function generateVisitsForPlanAction(planId: string, formData: FormData) {
-  await requirePermission(PERMISSIONS.servicePlansWrite);
+  const auth = await requirePermission(PERMISSIONS.servicePlansWrite);
   const startDate = (formData.get("startDate") as string) ?? "";
   const endDate = (formData.get("endDate") as string) ?? "";
 
@@ -157,7 +159,7 @@ export async function generateVisitsForPlanAction(planId: string, formData: Form
     throw new Error("Start and end dates are required for visit generation.");
   }
 
-  await generateVisitsForPlan(planId, startDate, endDate);
+  await generateVisitsForPlan(planId, startDate, endDate, auth.organizationId);
 
   revalidatePath(`/service-plans/${planId}`);
   revalidatePath("/service-visits");
@@ -166,7 +168,7 @@ export async function generateVisitsForPlanAction(planId: string, formData: Form
 }
 
 export async function generateVisitsForActivePlansAction(formData: FormData) {
-  await requirePermission(PERMISSIONS.servicePlansWrite);
+  const auth = await requirePermission(PERMISSIONS.servicePlansWrite);
   const startDate = (formData.get("startDate") as string) ?? "";
   const endDate = (formData.get("endDate") as string) ?? "";
 
@@ -174,7 +176,7 @@ export async function generateVisitsForActivePlansAction(formData: FormData) {
     throw new Error("Start and end dates are required for visit generation.");
   }
 
-  await generateVisitsForActivePlans(startDate, endDate);
+  await generateVisitsForActivePlans(startDate, endDate, auth.organizationId);
 
   revalidatePath("/service-visits");
   revalidatePath("/");

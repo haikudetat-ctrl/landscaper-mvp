@@ -48,7 +48,7 @@ async function geocodeNewPropertyAddress(values: PropertyFormValues) {
   }
 }
 
-async function createPropertyFromForm(formData: FormData) {
+async function createPropertyFromForm(formData: FormData, organizationId: string) {
   const parsed = propertyFormSchema.safeParse(normalizePropertyForm(formData));
 
   if (!parsed.success) {
@@ -62,6 +62,7 @@ async function createPropertyFromForm(formData: FormData) {
   const geocoded = await geocodeNewPropertyAddress(values);
 
   const created = await createProperty({
+    organization_id: organizationId,
     client_id: values.clientId,
     property_name: values.propertyName || null,
     street_1: values.addressLine1,
@@ -84,9 +85,9 @@ async function createPropertyFromForm(formData: FormData) {
 }
 
 export async function createPropertyAction(formData: FormData) {
-  await requirePermission(PERMISSIONS.propertiesWrite);
+  const auth = await requirePermission(PERMISSIONS.propertiesWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
-  const result = await createPropertyFromForm(formData);
+  const result = await createPropertyFromForm(formData, auth.organizationId);
 
   if (result.error || !result.created) {
     throw new Error(result.error ?? "Unable to create property");
@@ -103,9 +104,9 @@ export async function createPropertyActionWithState(
   _previousState: CreatePropertyFormState,
   formData: FormData,
 ): Promise<CreatePropertyFormState> {
-  await requirePermission(PERMISSIONS.propertiesWrite);
+  const auth = await requirePermission(PERMISSIONS.propertiesWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
-  const result = await createPropertyFromForm(formData);
+  const result = await createPropertyFromForm(formData, auth.organizationId);
 
   if (result.error || !result.created) {
     return { error: result.error ?? "Unable to create property", success: null, createdId: null };
@@ -122,9 +123,9 @@ export async function createPropertySheetAction(
   _previousState: CreatePropertyFormState,
   formData: FormData,
 ): Promise<CreatePropertyFormState> {
-  await requirePermission(PERMISSIONS.propertiesWrite);
+  const auth = await requirePermission(PERMISSIONS.propertiesWrite);
   const postCreateAction = maybeString(formData.get("postCreateAction"));
-  const result = await createPropertyFromForm(formData);
+  const result = await createPropertyFromForm(formData, auth.organizationId);
 
   if (result.error || !result.created) {
     return { error: result.error ?? "Unable to create property", success: null, createdId: null };
@@ -142,7 +143,7 @@ export async function createPropertySheetAction(
 }
 
 export async function updatePropertyAction(propertyId: string, formData: FormData) {
-  await requirePermission(PERMISSIONS.propertiesWrite);
+  const auth = await requirePermission(PERMISSIONS.propertiesWrite);
   const parsed = propertyFormSchema.safeParse(normalizePropertyForm(formData));
 
   if (!parsed.success) {
@@ -151,19 +152,23 @@ export async function updatePropertyAction(propertyId: string, formData: FormDat
 
   const values = parsed.data;
 
-  await updateProperty(propertyId, {
-    client_id: values.clientId,
-    property_name: values.propertyName || null,
-    street_1: values.addressLine1,
-    street_2: values.addressLine2 || null,
-    city: values.city,
-    state: values.state,
-    postal_code: values.postalCode,
-    gate_notes: values.gateNotes || null,
-    access_notes: values.accessNotes || null,
-    service_notes: values.serviceNotes || null,
-    is_active: values.isActive,
-  });
+  await updateProperty(
+    propertyId,
+    {
+      client_id: values.clientId,
+      property_name: values.propertyName || null,
+      street_1: values.addressLine1,
+      street_2: values.addressLine2 || null,
+      city: values.city,
+      state: values.state,
+      postal_code: values.postalCode,
+      gate_notes: values.gateNotes || null,
+      access_notes: values.accessNotes || null,
+      service_notes: values.serviceNotes || null,
+      is_active: values.isActive,
+    },
+    auth.organizationId,
+  );
 
   revalidatePath("/properties");
   revalidatePath(`/properties/${propertyId}`);

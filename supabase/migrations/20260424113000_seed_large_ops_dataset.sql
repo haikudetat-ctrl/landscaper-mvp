@@ -58,6 +58,29 @@ DECLARE
   v_states text[] := ARRAY['NJ','NJ','NJ','NJ','PA'];
   v_payment_methods text[] := ARRAY['venmo','cash','check','other'];
 BEGIN
+  -- Replay safety: this legacy data migration can run before foundational
+  -- schema migrations in some shadow-replay flows. If core tables are not
+  -- present yet, skip without failing and allow later migrations to proceed.
+  IF to_regclass('public.clients') IS NULL
+    OR to_regclass('public.properties') IS NULL
+    OR to_regclass('public.service_plans') IS NULL
+    OR to_regclass('public.service_visits') IS NULL
+    OR to_regclass('public.invoices') IS NULL
+    OR to_regclass('public.payments') IS NULL
+    OR to_regclass('public.communication_log') IS NULL
+    OR to_regclass('public.service_types') IS NULL THEN
+    RAISE NOTICE 'Large ops seed skipped: required core tables are not available yet.';
+    RETURN;
+  END IF;
+
+  -- This legacy bulk seed depends on historical helper functions that are not
+  -- guaranteed in clean replays. Local demo data now lives in supabase/seeds.
+  IF to_regprocedure('public.generate_service_visits_for_plan(uuid,date,date)') IS NULL
+    OR to_regprocedure('public.create_invoice_for_visit(uuid,integer)') IS NULL THEN
+    RAISE NOTICE 'Large ops seed skipped: legacy helper functions are unavailable in replay context.';
+    RETURN;
+  END IF;
+
   -- Guard so accidental re-application does not duplicate demo data.
   IF EXISTS (
     SELECT 1

@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Views } from "@/lib/types/database";
-import { throwDbError } from "@/lib/db/shared";
+import { requireOrgContext, throwDbError } from "@/lib/db/shared";
 import { getDashboardWeather } from "@/lib/weather/openweather";
 
 export type DashboardData = {
@@ -63,6 +63,7 @@ function toLocalDateString(value: Date): string {
 
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = createSupabaseServerClient();
+  const { orgId } = await requireOrgContext();
   const now = new Date();
   const monthStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
   const nextMonthStartDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -102,53 +103,64 @@ export async function getDashboardData(): Promise<DashboardData> {
     todayBacklogResult,
     weatherSnapshot,
   ] = await Promise.all([
-    supabase.from("v_today_jobs").select("*").order("scheduled_date", { ascending: true }),
+    supabase.from("v_today_jobs").select("*").eq("organization_id", orgId).order("scheduled_date", { ascending: true }),
     supabase
       .from("v_upcoming_week_jobs")
       .select("*")
+      .eq("organization_id", orgId)
       .order("scheduled_date", { ascending: true }),
-    supabase.from("v_invoice_balances").select("invoice_id, amount_remaining"),
+    supabase.from("v_invoice_balances").select("invoice_id, amount_remaining").eq("organization_id", orgId),
     supabase
       .from("v_overdue_invoices")
       .select("*")
+      .eq("organization_id", orgId)
       .order("due_date", { ascending: true }),
     supabase
       .from("v_skipped_visits_pending_reactivation")
       .select("*")
+      .eq("organization_id", orgId)
       .order("scheduled_date", { ascending: true }),
-    supabase.from("v_properties_missing_next_service").select("*").limit(50),
+    supabase.from("v_properties_missing_next_service").select("*").eq("organization_id", orgId).limit(50),
     supabase
       .from("service_visits")
       .select("id, status, quoted_price, scheduled_date")
+      .eq("organization_id", orgId)
       .gte("scheduled_date", monthStart)
       .lt("scheduled_date", nextMonthStart),
     supabase
       .from("service_visits")
       .select("id, status, quoted_price, scheduled_date")
+      .eq("organization_id", orgId)
       .gte("scheduled_date", rollingRevenueStart)
       .lt("scheduled_date", rollingRevenueEndExclusive),
     supabase
       .from("payments")
       .select("amount")
+      .eq("organization_id", orgId)
       .gte("payment_date", rollingRevenueStart)
       .lt("payment_date", rollingRevenueEndExclusive),
     supabase
       .from("invoices")
       .select("id, amount_due, invoice_date, email_sent_at")
+      .eq("organization_id", orgId)
       .gte("invoice_date", rollingRevenueStart)
       .lt("invoice_date", rollingRevenueEndExclusive),
     supabase
       .from("v_invoice_balances")
       .select("invoice_id, invoice_date, due_date, amount_remaining")
+      .eq("organization_id", orgId)
       .gte("invoice_date", rollingRevenueStart)
       .lt("invoice_date", rollingRevenueEndExclusive),
     supabase
       .from("service_visits")
-      .select("id, property_id, quoted_price, scheduled_date, status, properties(street_1, city, state, postal_code)")
-      .gte("scheduled_date", today)
-      .in("status", ["scheduled", "rescheduled", "pending_reactivation"])
-      .order("scheduled_date", { ascending: true })
-      .limit(1),
+      .select("id, property_id, quoted_price, scheduled_date, status, scheduled_position, scheduled_at, properties(street_1, city, state, postal_code)")
+      .eq("organization_id", orgId)
+      .eq("scheduled_date", today)
+      .not("status", "in", "(completed,cancelled,canceled,invoice_generated)")
+      .order("scheduled_position", { ascending: true, nullsFirst: false })
+      .order("scheduled_at", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true })
+      .limit(50),
     supabase.rpc("list_today_visits_with_missed_backlog", {
       p_target_date: today,
     }),
@@ -222,7 +234,51 @@ export async function getDashboardData(): Promise<DashboardData> {
     return sum + (typeof job.quoted_price === "number" ? job.quoted_price : 0);
   }, 0);
 
-  const nextJobRow = (nextJobResult.data ?? [])[0] ?? null;
+  const nextJobCandidates = (nextJobResult.data ?? []) as Array<{
+    id: string;
+    property_id: string | null;
+    quoted_price: number | null;
+    scheduled_date: string | null;
+    status: string | null;
+    scheduled_position: number | null;
+    scheduled_at: string | null;
+    properties:
+      | {
+          street_1: string | null;
+          city: string | null;
+          state: string | null;
+          postal_code: string | null;
+        }
+      | Array<{
+          street_1: string | null;
+          city: string | null;
+          state: string | null;
+          postal_code: string | null;
+        }>
+      | null;
+  }>;
+  const statusPriority = new Map<string, number>([
+    ["in_progress", 0],
+    ["arrived", 1],
+    ["en_route", 2],
+    ["scheduled", 3],
+    ["rescheduled", 4],
+    ["pending_reactivation", 5],
+  ]);
+  const rankedCandidates = [...nextJobCandidates].sort((left, right) => {
+    const leftRank = statusPriority.get(left.status ?? "") ?? 99;
+    const rightRank = statusPriority.get(right.status ?? "") ?? 99;
+    if (leftRank !== rightRank) return leftRank - rightRank;
+
+    const leftPosition = left.scheduled_position ?? Number.MAX_SAFE_INTEGER;
+    const rightPosition = right.scheduled_position ?? Number.MAX_SAFE_INTEGER;
+    if (leftPosition !== rightPosition) return leftPosition - rightPosition;
+
+    const leftAt = left.scheduled_at ? new Date(left.scheduled_at).getTime() : Number.MAX_SAFE_INTEGER;
+    const rightAt = right.scheduled_at ? new Date(right.scheduled_at).getTime() : Number.MAX_SAFE_INTEGER;
+    return leftAt - rightAt;
+  });
+  const nextJobRow = rankedCandidates[0] ?? null;
   const nextJobProperty = nextJobRow
     ? Array.isArray(nextJobRow.properties)
       ? nextJobRow.properties[0] ?? null

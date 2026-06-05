@@ -5,7 +5,12 @@ import { redirect } from "next/navigation";
 
 import { requirePermission } from "@/lib/auth/authorization";
 import { PERMISSIONS } from "@/lib/auth/rbac";
-import { createInvoiceForVisit, recordPayment } from "@/lib/db/invoices";
+import {
+  createInvoiceForVisit,
+  markInvoiceSent,
+  prepareInvoiceSendPreview,
+  recordPayment,
+} from "@/lib/db/invoices";
 import { maybeString, parseInteger } from "@/lib/db/shared";
 import { createInvoiceSchema, recordPaymentSchema } from "@/lib/validation/invoice";
 
@@ -15,9 +20,15 @@ export type CreateInvoiceFormState = {
   createdId?: string | null;
 };
 
+function redirectWithActionError(path: string, error: unknown) {
+  const message = error instanceof Error ? error.message : "Unexpected action failure";
+  redirect(`${path}?status=error&message=${encodeURIComponent(message)}`);
+}
+
 export async function createInvoiceFromVisitAction(visitId: string, formData: FormData) {
-  await requirePermission(PERMISSIONS.invoicesWrite);
-  const dueDays = parseInteger(formData.get("dueDays")) ?? 14;
+  try {
+    await requirePermission(PERMISSIONS.invoicesWrite);
+    const dueDays = parseInteger(formData.get("dueDays")) ?? 14;
 
   const parsed = createInvoiceSchema.safeParse({
     visitId,
@@ -33,7 +44,10 @@ export async function createInvoiceFromVisitAction(visitId: string, formData: Fo
   revalidatePath("/invoices");
   revalidatePath("/service-visits");
   revalidatePath("/");
-  redirect(`/invoices/${invoiceId}`);
+    redirect(`/invoices/${invoiceId}`);
+  } catch (error) {
+    redirectWithActionError("/invoices", error);
+  }
 }
 
 export async function createInvoiceFromVisitSheetAction(
@@ -71,8 +85,9 @@ export async function createInvoiceFromVisitSheetAction(
 }
 
 export async function recordPaymentAction(invoiceId: string, formData: FormData) {
-  await requirePermission(PERMISSIONS.paymentsRecord);
-  const parsed = recordPaymentSchema.safeParse({
+  try {
+    await requirePermission(PERMISSIONS.paymentsRecord);
+    const parsed = recordPaymentSchema.safeParse({
     invoiceId,
     amount: Number(formData.get("amountCents") ?? 0),
     paymentDate: (formData.get("paymentDate") as string) ?? "",
@@ -95,5 +110,33 @@ export async function recordPaymentAction(invoiceId: string, formData: FormData)
   revalidatePath(`/invoices/${invoiceId}`);
   revalidatePath("/invoices");
   revalidatePath("/");
-  redirect(`/invoices/${invoiceId}`);
+    redirect(`/invoices/${invoiceId}?payment_recorded=1`);
+  } catch (error) {
+    redirectWithActionError(`/invoices/${invoiceId}`, error);
+  }
+}
+
+export async function sendInvoiceAction(invoiceId: string, formData: FormData) {
+  try {
+    await requirePermission(PERMISSIONS.invoicesWrite);
+    const includeCreditCardPlaceholder = (formData.get("includeCreditCardPlaceholder") as string) === "on";
+    const useProvider = process.env.LOAM_EMAIL_PROVIDER === "enabled";
+    const preview = await prepareInvoiceSendPreview({
+    invoiceId,
+    includeCreditCardPlaceholder,
+  });
+
+  await markInvoiceSent({
+    invoiceId,
+    previewBody: preview.body,
+    recipient: preview.recipient,
+    useProvider,
+  });
+
+  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath("/invoices");
+    redirect(`/invoices/${invoiceId}?email_mode=${useProvider ? "sent" : "preview"}`);
+  } catch (error) {
+    redirectWithActionError(`/invoices/${invoiceId}`, error);
+  }
 }

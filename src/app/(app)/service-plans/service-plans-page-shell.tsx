@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FormField, inputClasses } from "@/components/ui/forms";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { formatAddress, formatCurrencyFromCents } from "@/lib/utils/format";
@@ -93,7 +93,7 @@ export function ServicePlansPageShell({
       </SectionCard>
 
       {plans.length === 0 ? (
-        <EmptyState title="No service plans yet" description="Create one to begin generating visits." />
+        <EmptyState variant="inline" title="No service plans yet" description="Create one to begin generating visits." />
       ) : (
         <>
           <div className="space-y-2 md:hidden">

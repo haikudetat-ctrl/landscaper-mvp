@@ -1,15 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { BottomSheetDialog } from "@/components/ui/bottom-sheet-dialog";
 import { ClientCard, mapClientRowToCard } from "@/components/cards";
-import { EmptyStateCard } from "@/components/empty-states/empty-state-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { formatClientName } from "@/lib/utils/format";
 import type { listClients } from "@/lib/db/clients";
@@ -83,14 +83,14 @@ export function ClientsPageShell({
 
       {clients.length === 0 ? (
         <div className="space-y-3">
-          <EmptyStateCard
+          <EmptyState variant="card"
             icon={<span>+</span>}
             headline="No clients added yet"
             helperText="Create your first client to start tracking properties, invoices, and route work."
             ctaLabel="New client"
             onClick={() => setIsNewClientOpen(true)}
           />
-          <EmptyState title="No clients yet" description="Create your first client to start tracking properties." />
+          <EmptyState variant="inline" title="No clients yet" description="Create your first client to start tracking properties." />
         </div>
       ) : (
         <>
@@ -180,6 +180,32 @@ export function ClientsPageShell({
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-700">Collection notes</p>
                 <p className="mt-2 text-sm font-semibold text-zinc-900">{selectedClient.cash_collection_notes || "No collection notes yet."}</p>
               </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Link
+                href={`/clients/${selectedClient.id}/edit`}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-emerald-50"
+              >
+                Edit client
+              </Link>
+              <Link
+                href={`/clients/${selectedClient.id}`}
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#287b40] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#236d38]"
+              >
+                View details
+              </Link>
+              <Link
+                href={`/properties?q=${encodeURIComponent(formatClientName(selectedClient))}`}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-emerald-50"
+              >
+                View properties
+              </Link>
+              <Link
+                href={`/invoices?q=${encodeURIComponent(formatClientName(selectedClient))}`}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-emerald-50"
+              >
+                View invoices
+              </Link>
             </div>
           </div>
         ) : null}

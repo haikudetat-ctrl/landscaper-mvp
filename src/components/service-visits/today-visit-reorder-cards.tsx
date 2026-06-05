@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { formatAddress, formatDate } from "@/lib/utils/format";
 
 type VisitRelationClient = {

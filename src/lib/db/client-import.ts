@@ -26,7 +26,7 @@ function normalizeFrequency(value: ClientImportRowInput["frequency"]) {
   return value === "custom-interval" ? "custom_interval" : value;
 }
 
-export async function importClientsWithPlans(rows: ClientImportRowInput[]): Promise<ClientImportResult> {
+export async function importClientsWithPlans(rows: ClientImportRowInput[], organizationId: string): Promise<ClientImportResult> {
   const supabase = await createSupabaseAuthServerClient();
   const created: ClientImportCreatedRow[] = [];
 
@@ -34,6 +34,7 @@ export async function importClientsWithPlans(rows: ClientImportRowInput[]): Prom
     const clientResult = await supabase
       .from("clients")
       .insert({
+        organization_id: organizationId,
         full_name: row.clientName,
         primary_email: row.email || null,
         primary_phone: row.phone || null,
@@ -55,6 +56,7 @@ export async function importClientsWithPlans(rows: ClientImportRowInput[]): Prom
 
     if (hasPropertyDetails(row)) {
       const propertyInput: Inserts<"properties"> = {
+        organization_id: organizationId,
         client_id: clientResult.data.id,
         property_name: row.propertyName || null,
         street_1: row.street1 || "",
@@ -83,6 +85,7 @@ export async function importClientsWithPlans(rows: ClientImportRowInput[]): Prom
 
     if (hasPlanDetails(row) && property) {
       const servicePlanInput: Inserts<"service_plans"> = {
+        organization_id: organizationId,
         property_id: property.id,
         service_type_id: row.serviceTypeId || "",
         plan_name: row.planName || `${row.clientName} service plan`,

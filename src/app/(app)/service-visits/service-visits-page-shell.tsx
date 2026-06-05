@@ -9,7 +9,7 @@ import { TodayVisitReorderCards } from "@/components/service-visits/today-visit-
 import { BottomSheetDialog } from "@/components/ui/bottom-sheet-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import type { getServicePlanFormOptions } from "@/lib/db/service-plans";
 import type { listServiceVisits } from "@/lib/db/service-visits";
@@ -44,6 +44,7 @@ export function ServiceVisitsPageShell({
 }) {
   const router = useRouter();
   const [isNewPlanOpen, setIsNewPlanOpen] = useState(false);
+  const [selectedVisit, setSelectedVisit] = useState<Visits[number] | null>(null);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -100,7 +101,7 @@ export function ServiceVisitsPageShell({
       ) : null}
 
       {visits.length === 0 ? (
-        <EmptyState title="No visits for selected filters" />
+        <EmptyState variant="inline" title="No visits for selected filters" />
       ) : (
         <>
           <div className="space-y-2 md:hidden">
@@ -118,9 +119,10 @@ export function ServiceVisitsPageShell({
                 const isMissed = Boolean((visit as { is_missed_appointment?: boolean }).is_missed_appointment);
 
                 return (
-                  <Link
+                  <button
                     key={visit.id}
-                    href={`/service-visits/${visit.id}`}
+                    type="button"
+                    onClick={() => setSelectedVisit(visit)}
                     className={`block rounded-md border p-3 shadow-sm ${
                       isMissed ? "border-[#cc9933] bg-[#ffffcc]" : "border-zinc-200 bg-white"
                     }`}
@@ -137,7 +139,7 @@ export function ServiceVisitsPageShell({
                       <StatusPill status={visit.status} />
                     </div>
                     <p className="mt-1 text-xs text-zinc-600">{serviceType?.label ?? "-"}</p>
-                  </Link>
+                  </button>
                 );
               })
             )}
@@ -168,9 +170,13 @@ export function ServiceVisitsPageShell({
                     <tr key={visit.id} className={`border-t border-zinc-200 ${isMissed ? "bg-[#ffffcc]" : ""}`}>
                       <Td>{formatDate(visit.scheduled_date)}</Td>
                       <Td>
-                        <Link href={`/service-visits/${visit.id}`} className="font-semibold text-zinc-900 underline">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedVisit(visit)}
+                          className="min-h-11 font-semibold text-zinc-900 underline"
+                        >
                           {formatAddress(property ?? {})}
-                        </Link>
+                        </button>
                         {isMissed ? (
                           <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#666666]">
                             Missed appointment
@@ -205,6 +211,54 @@ export function ServiceVisitsPageShell({
             className="px-[6px] sm:px-[10px]"
           />
         </div>
+      </BottomSheetDialog>
+
+      <BottomSheetDialog
+        open={Boolean(selectedVisit)}
+        onClose={() => setSelectedVisit(null)}
+        eyebrow="Service Visit"
+        title={selectedVisit ? formatDate(selectedVisit.scheduled_date) : "Service Visit"}
+      >
+        {selectedVisit ? (
+          <div className="max-h-[calc(85vh-88px)] overflow-y-auto px-4 pb-6 pt-4 sm:px-5">
+            {(() => {
+              const property = Array.isArray(selectedVisit.properties) ? selectedVisit.properties[0] : selectedVisit.properties;
+              const client = property
+                ? Array.isArray(property.clients)
+                  ? property.clients[0]
+                  : property.clients
+                : null;
+              const serviceType = Array.isArray(selectedVisit.service_types) ? selectedVisit.service_types[0] : selectedVisit.service_types;
+              return (
+                <>
+                  <div className="rounded-2xl border border-emerald-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-700">Property</p>
+                    <p className="mt-1 text-sm font-bold text-zinc-950">{formatAddress(property ?? {})}</p>
+                    <p className="mt-2 text-xs text-zinc-600">Client: {client?.full_name ?? "No client"}</p>
+                    <p className="text-xs text-zinc-600">Service: {serviceType?.label ?? "-"}</p>
+                    <div className="mt-3">
+                      <StatusPill status={selectedVisit.status} />
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <Link
+                      href={`/service-visits/${selectedVisit.id}/edit`}
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-emerald-300 bg-white px-4 py-2.5 text-sm font-bold text-zinc-950 hover:bg-emerald-50"
+                    >
+                      Edit visit
+                    </Link>
+                    <Link
+                      href={`/service-visits/${selectedVisit.id}`}
+                      className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#287b40] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#236d38]"
+                    >
+                      View details
+                    </Link>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        ) : null}
       </BottomSheetDialog>
     </div>
   );

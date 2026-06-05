@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { listCommunicationLog } from "@/lib/db/communications";
 import { formatAddress, formatDateTime } from "@/lib/utils/format";
@@ -36,7 +36,7 @@ export default async function CommunicationLogPage({
       </form>
 
       {entries.length === 0 ? (
-        <EmptyState title="No communication history found" />
+        <EmptyState variant="inline" title="No communication history found" />
       ) : (
         <>
           <div className="space-y-2 md:hidden">

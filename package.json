@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:generate": "tsx scripts/generate-seed.ts"
+    "seed:generate": "tsx scripts/generate-seed.ts",
+    "supabase:types": "bash scripts/supabase-types.sh"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

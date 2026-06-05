@@ -11,8 +11,41 @@ function normalizeStops(input: OptimizeRouteInput) {
 export const osmProvider: MapProvider = {
   name: "osm",
 
-  async geocodeAddress(): Promise<GeocodeResult> {
-    throw new Error("OSM geocoding is not configured in this app.");
+  async geocodeAddress(address: string): Promise<GeocodeResult> {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        "Accept-Language": "en",
+        "User-Agent": "LOAM-LandscapingOps/1.0 (https://loam.app)",
+      },
+    });
+
+    if (!response.ok) {
+      const message = await response.text().catch(() => "Unknown error");
+      throw new Error(`OSM geocoding failed (${response.status}): ${message}`);
+    }
+
+    const data = (await response.json()) as Array<{
+      lat: string;
+      lon: string;
+      display_name: string;
+    }>;
+    const result = data[0];
+
+    if (!result) {
+      throw new Error(`No geocoding results found for address: "${address}"`);
+    }
+
+    return {
+      latitude: Number.parseFloat(result.lat),
+      longitude: Number.parseFloat(result.lon),
+      normalizedAddress: result.display_name,
+      providerMetadata: {
+        provider: "osm",
+        attribution: "OpenStreetMap contributors",
+      },
+    };
   },
 
   async optimizeRoute(input: OptimizeRouteInput): Promise<OptimizedRoute> {

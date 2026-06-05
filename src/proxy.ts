@@ -9,11 +9,14 @@ const publicRoutes = ["/login", "/account-pending", "/hdz", "/intake"];
 const permissionRoutes: Array<{ prefix: string; permission: Permission }> = [
   { prefix: "/clients/import", permission: PERMISSIONS.importsRun },
   { prefix: "/communication-log", permission: PERMISSIONS.communicationRead },
+  { prefix: "/dashboard", permission: PERMISSIONS.dashboardView },
   { prefix: "/service-visits", permission: PERMISSIONS.serviceVisitsRead },
   { prefix: "/service-plans", permission: PERMISSIONS.servicePlansRead },
   { prefix: "/properties", permission: PERMISSIONS.propertiesRead },
   { prefix: "/clients", permission: PERMISSIONS.clientsRead },
   { prefix: "/invoices", permission: PERMISSIONS.invoicesRead },
+  { prefix: "/schedule", permission: PERMISSIONS.scheduleView },
+  { prefix: "/today", permission: PERMISSIONS.runView },
   { prefix: "/run", permission: PERMISSIONS.runView },
   { prefix: "/testspace", permission: PERMISSIONS.supportAdmin },
   { prefix: "/ui-kit", permission: PERMISSIONS.supportAdmin },
@@ -36,7 +39,7 @@ function permissionForPath(pathname: string): Permission | null {
 
 function defaultAuthorizedPath(role: ReturnType<typeof deriveAppRole>) {
   if (hasPermission(role, PERMISSIONS.dashboardView)) return "/";
-  if (hasPermission(role, PERMISSIONS.runView)) return "/run";
+  if (hasPermission(role, PERMISSIONS.runView)) return "/today";
   if (hasPermission(role, PERMISSIONS.serviceVisitsRead)) return "/service-visits";
   if (hasPermission(role, PERMISSIONS.propertiesRead)) return "/properties";
   if (hasPermission(role, PERMISSIONS.clientsRead)) return "/clients";

@@ -18,4 +18,8 @@ export const serviceVisitRescheduleSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
 });
 
+export const serviceVisitCompletionSchema = z.object({
+  completionNotes: z.string().trim().max(4000).optional(),
+});
+
 export type ServiceVisitUpdateValues = z.infer<typeof serviceVisitUpdateSchema>;

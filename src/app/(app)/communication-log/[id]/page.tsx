@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { getCommunicationLogById } from "@/lib/db/communications";
 import { formatAddress, formatClientName, formatDateTime } from "@/lib/utils/format";
 import { requirePagePermission } from "@/lib/auth/page-authorization";

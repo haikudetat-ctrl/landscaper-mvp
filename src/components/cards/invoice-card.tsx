@@ -7,7 +7,7 @@ export interface InvoiceCardData {
   clientName: string;
   amount: number;
   dueDate?: string | null;
-  status: "scheduled" | "completed" | "skipped" | "overdue" | "paused" | "needs_review";
+  status: string;
   paymentMethod?: string | null;
   relatedJobs?: string[];
 }

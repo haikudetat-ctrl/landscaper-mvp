@@ -5,7 +5,7 @@ import { FormField, inputClasses } from "@/components/ui/forms";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -79,7 +79,7 @@ export default async function ServicePlanDetailPage({ params }: { params: Promis
 
       <SectionCard title="Recent Generated Visits" right={<Link href="/service-visits" className="text-sm underline">Open all visits</Link>}>
         {visits.length === 0 ? (
-          <EmptyState title="No visits generated yet" />
+          <EmptyState variant="inline" title="No visits generated yet" />
         ) : (
           <>
             <div className="space-y-2 md:hidden">

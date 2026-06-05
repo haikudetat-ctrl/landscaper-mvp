@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import type { DashboardData } from "@/lib/db/dashboard";
 import { formatAddress, formatCurrencyFromCents } from "@/lib/utils/format";
+import { deriveCanonicalState, getPrimaryActionLabel } from "@/lib/workflows/today-visit-workflow";
 
 type SearchSuggestion = {
   id: string;
@@ -16,12 +16,18 @@ type SearchSuggestion = {
   subtitle?: string;
 };
 
-export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] }) {
+export function MobileHomeDashboard({
+  data,
+  advanceNextJobAction,
+}: {
+  data: DashboardData;
+  advanceNextJobAction?: (formData: FormData) => Promise<void>;
+}) {
+  const mobile = data.mobile;
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
-  const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   const [isShiftingWeather, setIsShiftingWeather] = useState(false);
   const [weatherShiftMessage, setWeatherShiftMessage] = useState<string | null>(null);
@@ -58,18 +64,36 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
   }, [debouncedQuery]);
 
   const nextJobHref = useMemo(() => {
-    if (!data.nextJob) return "/service-visits";
-    if (data.nextJob.propertyId) return `/properties/${data.nextJob.propertyId}`;
-    return `/service-visits/${data.nextJob.visitId}`;
-  }, [data.nextJob]);
+    if (!mobile.nextJob) return "/today";
+    if (mobile.nextJob.propertyId) return `/properties/${mobile.nextJob.propertyId}`;
+    return `/service-visits/${mobile.nextJob.visitId}`;
+  }, [mobile.nextJob]);
 
   const nextJobMapUrl = useMemo(() => {
-    if (!data.nextJob) return "#";
-    const queryValue = [data.nextJob.street_1, data.nextJob.city, data.nextJob.state, data.nextJob.postal_code]
+    if (!mobile.nextJob) return "#";
+    const queryValue = [mobile.nextJob.street_1, mobile.nextJob.city, mobile.nextJob.state, mobile.nextJob.postal_code]
       .filter(Boolean)
       .join(" ");
     return `https://maps.google.com/?q=${encodeURIComponent(queryValue)}`;
-  }, [data.nextJob]);
+  }, [mobile.nextJob]);
+  const nextJobData = useMemo(() => {
+    if (!mobile.nextJob) return null;
+    const match = data.todayJobs.find((job) => job.service_visit_id === mobile.nextJob?.visitId) ?? null;
+    const position = Math.max(
+      1,
+      data.todayJobs.findIndex((job) => job.service_visit_id === mobile.nextJob?.visitId) + 1,
+    );
+    const state = deriveCanonicalState({
+      status: match?.visit_status ?? "scheduled",
+      invoiceStatus: null,
+    });
+    return {
+      match,
+      state,
+      position,
+      nextAction: getPrimaryActionLabel(state),
+    };
+  }, [data.todayJobs, mobile.nextJob]);
 
   const todayFilter = useMemo(() => {
     const now = new Date();
@@ -77,39 +101,17 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
     return local.toISOString().slice(0, 10);
   }, []);
   const weatherRangeLabel =
-    data.weather?.tempLow != null && data.weather?.tempHigh != null
-      ? `${data.weather.tempLow}\u00b0-${data.weather.tempHigh}\u00b0`
-      : data.weather?.tempHigh != null
-        ? `High ${data.weather.tempHigh}\u00b0`
-        : data.weather?.tempLow != null
-          ? `Low ${data.weather.tempLow}\u00b0`
+    mobile.weather?.tempLow != null && mobile.weather?.tempHigh != null
+      ? `${mobile.weather.tempLow}\u00b0-${mobile.weather.tempHigh}\u00b0`
+      : mobile.weather?.tempHigh != null
+        ? `High ${mobile.weather.tempHigh}\u00b0`
+        : mobile.weather?.tempLow != null
+          ? `Low ${mobile.weather.tempLow}\u00b0`
           : null;
 
-  const fixedCardClass = "h-[clamp(104px,15vh,140px)] rounded-2xl border-[0.5px] border-[#b0dcc1] p-2.5 shadow-sm";
-  const topPanelClass = "h-[clamp(104px,15vh,140px)]";
-  const cardCyanClass = "bg-[#fafbfb]";
-  const expectedRevenue = Math.max(data.expectedMonthlyRevenue, 0);
-  const collectedRevenue = Math.max(data.collectedMoneyThisMonth, 0);
-  const overdueRevenue = Math.max(data.rollingOverdueInvoiceAmount, 0);
-  const unpaidCurrentRevenue = Math.max(data.rollingUnpaidInvoiceAmount - overdueRevenue, 0);
-  const hasRevenueTarget = expectedRevenue > 0;
-  const revenueGap = hasRevenueTarget ? Math.max(expectedRevenue - collectedRevenue, 0) : 0;
-  const revenueAboveTarget = hasRevenueTarget ? Math.max(collectedRevenue - expectedRevenue, 0) : collectedRevenue;
-  const revenueProgress = hasRevenueTarget
-    ? Math.round((collectedRevenue / expectedRevenue) * 100)
-    : collectedRevenue > 0
-      ? 100
-      : 0;
-  const monthlyProgress = data.monthlyTotalJobs > 0 ? Math.round((data.monthlyCompletedJobs / data.monthlyTotalJobs) * 100) : 0;
-  const revenuePieData = hasRevenueTarget
-    ? [
-        { name: "Collected", value: Math.max(collectedRevenue, 0), fill: "#287b40" },
-        { name: "Unpaid", value: unpaidCurrentRevenue, fill: "#a5ccb3" },
-        { name: "Overdue", value: overdueRevenue, fill: "#cc9933" },
-      ].filter((slice) => slice.value > 0)
-    : [
-        { name: "Collected", value: Math.max(collectedRevenue, 1), fill: "#287b40" },
-      ];
+  const fixedCardClass = "h-[clamp(104px,15vh,140px)] rounded-2xl border-[0.5px] border-[#a5b6a4] p-2.5 shadow-sm";
+  const cardCyanClass = "bg-[#f3f6f1]";
+  const iconClass = "mt-0.5 h-[2.1875rem] w-[2.1875rem] shrink-0";
 
   async function confirmWeatherSkip() {
     setIsShiftingWeather(true);
@@ -146,12 +148,12 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
 
   return (
     <div className="-mx-4 -mt-[15px] md:hidden">
-      <div className="grid min-h-[calc(100dvh-8.25rem)] grid-rows-[auto_1fr_auto] bg-gradient-to-br from-[#6ab967] to-[#287b40]">
+      <div className="grid min-h-[calc(100dvh-8.25rem)] grid-rows-[auto_1fr_auto] bg-gradient-to-br from-[#1f4d33] via-[#2a6540] to-[#6f9950]">
         <section className="relative px-4 pt-[5px] pb-3">
           <div className="relative">
             <svg
               viewBox="0 0 24 24"
-              className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6ab967]"
+              className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#5f7a61]"
               aria-hidden="true"
             >
               <path
@@ -164,11 +166,11 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search clients, properties, visits, invoices..."
-              className="w-full rounded-xl border border-white/70 bg-white py-2.5 pl-10 pr-10 text-sm text-[#666666] outline-none focus:border-[#6ab967]"
+              className="w-full rounded-xl border border-[#a5b6a4] bg-[#f4f7f3] py-2.5 pl-10 pr-10 text-sm text-[#223429] outline-none shadow-[0_10px_20px_-16px_rgba(23,41,29,0.38)] focus:border-[#2f6f43] focus:bg-white"
             />
             <svg
               viewBox="0 0 24 24"
-              className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#6ab967]"
+              className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#5f7a61]"
               aria-hidden="true"
             >
               <path fill="currentColor" d="M7 5h10v2H7zm0 6h10v2H7zm0 6h7v2H7z" />
@@ -176,7 +178,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
           </div>
 
           {query.trim().length >= 2 ? (
-              <div className="absolute left-4 right-4 top-[calc(100%-16px)] z-30 max-h-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-lg">
+              <div className="absolute left-4 right-4 top-[calc(100%-16px)] z-30 max-h-56 overflow-y-auto rounded-xl border border-[#a5b6a4] bg-[#f6f8f4] shadow-lg">
               {suggestions.length === 0 ? (
                 <div className="px-3 py-2 text-xs text-[#666666]">No matches found</div>
               ) : (
@@ -205,76 +207,72 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
         </section>
 
         <section className="overflow-y-auto bg-white px-[18px] pt-[14px] pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-          <div className="grid h-full grid-cols-2 gap-2.5">
-            <div className={`${topPanelClass} flex h-full flex-col justify-between px-0.5`}>
-                <div className="space-y-1">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666666]">
-                      Rolling 4 Weeks Revenue
-                    </p>
-                    <p className="text-[18px] font-bold leading-none text-[#666666]">
-                      {formatCurrencyFromCents(data.expectedMonthlyRevenue)}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-[#666666]">{data.rollingRevenueWindowLabel}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Collected 4 Weeks</p>
-                    <p className="text-[18px] font-semibold leading-none text-[#287b40]">
-                      {formatCurrencyFromCents(data.collectedMoneyThisMonth)}
-                    </p>
-                    <p className="mt-0.5 text-[10px] text-[#666666]">
-                      Sent {data.rollingSentInvoiceCount} • Unpaid {data.rollingUnpaidInvoiceCount}
-                    </p>
-                  </div>
+          <div className="space-y-2.5">
+            <article className="rounded-2xl border border-[#93ab92] bg-gradient-to-br from-[#f3f7f1] via-[#edf3eb] to-[#e7efe3] p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#4a6050]">Next Job</p>
+                  <p className="text-sm font-semibold text-[#172119]">
+                    {nextJobData?.match?.client_name ?? (mobile.nextJob ? "Current Route Stop" : "No active stop")}
+                  </p>
+                  <p className="text-xs text-[#4a6050]">
+                    {nextJobData?.match?.service_type_label ?? (mobile.nextJob ? "Scheduled service" : "Today is clear")}
+                  </p>
                 </div>
-
-                <div className="space-y-1 border-t border-[#d3e7da] pt-1.5">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#666666]">
-                    <span>Monthly Jobs {data.monthlyCompletedJobs}/{data.monthlyTotalJobs}</span>
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] text-[#666666]">
-                      {monthlyProgress}%
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-[#666666]">{data.todayDateLabel}</p>
-                </div>
+                <span className="rounded-full border border-[#8da195] bg-[#dce6d9] px-2 py-1 text-[10px] font-semibold text-[#20372b]">
+                  {mobile.nextJob ? `${nextJobData?.position ?? 1} of ${Math.max(mobile.todayTotalJobs, 1)}` : "No Route"}
+                </span>
               </div>
 
-            <button
-              type="button"
-              onClick={() => setIsRevenueModalOpen(true)}
-              className={`${topPanelClass} flex h-full flex-col px-0.5 text-left`}
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Revenue Gap</p>
-                <span className="text-[10px] font-semibold text-[#666666]">Expand</span>
-              </div>
-              <div className="relative mt-0.5 h-[64px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={revenuePieData}
-                      dataKey="value"
-                      innerRadius="74%"
-                      outerRadius="100%"
-                      cornerRadius="50%"
-                      paddingAngle={5}
-                      isAnimationActive={false}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-[#666666] shadow-sm">
-                    {revenueProgress}%
+              <p className="mt-2 text-xs text-[#33463a]">
+                {mobile.nextJob
+                  ? [mobile.nextJob.street_1, mobile.nextJob.city, mobile.nextJob.state, mobile.nextJob.postal_code].filter(Boolean).join(", ")
+                  : "No scheduled jobs for this route state. Check schedule or create today’s route."}
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="rounded-full border border-[#8ea296] bg-[#d4ddd8] px-2 py-1 font-semibold text-[#20372b]">
+                  {mobile.nextJob ? nextJobData?.state.replaceAll("_", " ") : "idle"}
+                </span>
+                <span className="rounded-full border border-[#a9b9a8] bg-[#e6ece4] px-2 py-1 font-medium text-[#33463a]">
+                  Next action: {mobile.nextJob ? nextJobData?.nextAction : mobile.todayTotalJobs > 0 ? "Start Today’s Route" : "Review Schedule"}
+                </span>
+                {mobile.overdueVisitCount > 0 ? (
+                  <span className="rounded-full border border-[#b7a978] bg-[#ede4c9] px-2 py-1 font-semibold text-[#4d421d]">
+                    Follow-ups: {mobile.overdueVisitCount}
                   </span>
-                </div>
+                ) : null}
+                <span className="rounded-full border border-[#a5b6a4] bg-white px-2 py-1 font-medium text-[#33463a]">
+                  Expected: {formatCurrencyFromCents(mobile.nextJob?.quotedPrice ?? 0)}
+                </span>
               </div>
-              <div className="mt-auto grid grid-cols-1 gap-0.5 text-[10px] text-[#666666]">
-                <p className="font-semibold">{data.rollingRevenueWindowLabel}</p>
-                <p>Expected: {formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
-                <p>Collected: {formatCurrencyFromCents(data.collectedMoneyThisMonth)}</p>
-              </div>
-            </button>
 
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {mobile.nextJob && advanceNextJobAction ? (
+                  <form action={advanceNextJobAction}>
+                    <input type="hidden" name="visitId" value={mobile.nextJob.visitId} />
+                    <button
+                      type="submit"
+                      className="min-h-11 w-full rounded-xl border border-[#2f6f43] bg-[#2f6f43] px-3 py-2 text-center text-sm font-semibold text-white"
+                    >
+                      {nextJobData?.nextAction ?? "Advance Job"}
+                    </button>
+                  </form>
+                ) : (
+                  <Link href="/today" className="min-h-11 rounded-xl border border-[#2f6f43] bg-[#2f6f43] px-3 py-2 text-center text-sm font-semibold text-white">
+                    Open Today
+                  </Link>
+                )}
+                <a
+                  href={nextJobMapUrl}
+                  className="min-h-11 rounded-xl border border-[#93ab92] bg-white px-3 py-2 text-center text-sm font-semibold text-[#20372b]"
+                >
+                  Open Maps
+                </a>
+              </div>
+            </article>
+
+            <div className="grid h-full grid-cols-2 gap-2.5">
             <div
               role="button"
               tabIndex={0}
@@ -289,9 +287,7 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
             >
               <div className="flex h-full flex-col">
                 <div className="flex flex-[2] gap-2">
-                  <div className="mt-0.5 shrink-0">
-                    <img src="/LOAM_Mower_Icon.svg" alt="Next Job" className="h-[2.1875rem] w-[2.1875rem]" />
-                  </div>
+                  <img src="/LOAM_Mower_Icon_Evergreen.svg" alt="Next Job" className={iconClass} />
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">Next Job</p>
                     <a
@@ -299,38 +295,36 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
                       onClick={(event) => event.stopPropagation()}
                       className="text-[13px] font-semibold leading-4 text-[#666666] underline"
                     >
-                      {formatAddress(data.nextJob ?? {})}
+                      {formatAddress(mobile.nextJob ?? {})}
                     </a>
                   </div>
                 </div>
                 <div className="mt-1 border-t border-zinc-200 pt-1 text-[12px] font-medium text-[#666666]">
-                  Job Value: {formatCurrencyFromCents(data.nextJob?.quotedPrice ?? 0)}
+                  Job Value: {formatCurrencyFromCents(mobile.nextJob?.quotedPrice ?? 0)}
                 </div>
               </div>
             </div>
 
             <Link
-              href="/run"
-              className={`${fixedCardClass} block ${data.overdueVisitCount > 0 ? "border border-[#cc9933] bg-[#ffffcc]" : cardCyanClass}`}
+              href="/today"
+              className={`${fixedCardClass} block ${mobile.overdueVisitCount > 0 ? "border border-[#cc9933] bg-[#ffffcc]" : cardCyanClass}`}
             >
               <div className="flex h-full flex-col">
                 <div className="flex flex-[2] items-start gap-2">
-                  <div className="mt-0.5 shrink-0">
-                    <img src="/LOAM_ThumbsUp_Icon.svg" alt="Today's Jobs" className="h-[2.1875rem] w-[2.1875rem]" />
-                  </div>
+                  <img src="/LOAM_ThumbsUp_Icon_Evergreen.svg" alt="Today's Jobs" className={iconClass} />
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">Today&apos;s Jobs</p>
                     <p className="text-[13px] font-semibold leading-4 text-[#666666]">
-                      {data.todayCompletedJobs}/{data.todayTotalJobs}
+                      {mobile.todayCompletedJobs}/{mobile.todayTotalJobs}
                     </p>
                     <p className="mt-1 text-[12px] font-medium leading-4 text-[#666666]">
-                      Expected: {formatCurrencyFromCents(data.todayExpectedRevenue)}
+                      Expected: {formatCurrencyFromCents(mobile.todayExpectedRevenue)}
                     </p>
                   </div>
                 </div>
                 <div className="mt-1 border-t border-zinc-200 pt-1 text-[12px] font-medium">
-                  {data.overdueVisitCount > 0 ? (
-                    <span className="text-[#cc9933]">Missed: {data.overdueVisitCount}</span>
+                  {mobile.overdueVisitCount > 0 ? (
+                    <span className="text-[#cc9933]">Missed: {mobile.overdueVisitCount}</span>
                   ) : (
                     <span className="text-[#666666]">No missed appointments</span>
                   )}
@@ -341,17 +335,15 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
             <Link href="/invoices?status=overdue" className={`${fixedCardClass} ${cardCyanClass}`}>
               <div className="flex h-full flex-col">
                 <div className="flex flex-[2] gap-2">
-                  <div className="mt-0.5 shrink-0">
-                    <img src="/LOAM_Icon.svg" alt="Invoices" className="h-[2.1875rem] w-[2.1875rem]" />
-                  </div>
+                  <img src="/LOAM_Icon_Evergreen.svg" alt="Invoices" className={iconClass} />
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#666666]">Invoices</p>
-                    <p className="text-[13px] font-semibold leading-4 text-[#666666]">Unpaid: {data.unpaidInvoiceCount}</p>
-                    <p className="text-[13px] font-semibold leading-4 text-[#666666]">Overdue: {data.overdueInvoiceCount}</p>
+                    <p className="text-[13px] font-semibold leading-4 text-[#666666]">Unpaid: {mobile.unpaidInvoiceCount}</p>
+                    <p className="text-[13px] font-semibold leading-4 text-[#666666]">Overdue: {mobile.overdueInvoiceCount}</p>
                   </div>
                 </div>
                 <div className="mt-1 border-t border-zinc-200 pt-1 text-[12px] font-medium text-[#666666]">
-                  Remaining {formatCurrencyFromCents(data.unpaidAmount)}
+                  Remaining {formatCurrencyFromCents(mobile.unpaidAmount)}
                 </div>
               </div>
             </Link>
@@ -366,18 +358,16 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               className={`${fixedCardClass} ${cardCyanClass} text-[13px] font-semibold text-[#666666] disabled:opacity-70`}
             >
               <div className="flex h-full items-start gap-2">
-                <div className="mt-0.5 shrink-0">
-                  <img src="/LOAM_WeatherSkip_Icon.svg" alt="Weather Day Skip" className="h-[2.1875rem] w-[2.1875rem]" />
-                </div>
+                <img src="/LOAM_WeatherSkip_Icon_Evergreen.svg" alt="Weather Day Skip" className={iconClass} />
                 <div className="pt-0.5 text-left">
                   <p>{isShiftingWeather ? "Shifting..." : "Weather Day Skip Button"}</p>
-                  {data.weather ? (
+                  {mobile.weather ? (
                     <p className="mt-0.5 text-[11px] font-medium text-[#666666]">
                       <span className="mr-1" aria-hidden="true">
-                        {data.weather.icon}
+                        {mobile.weather.icon}
                       </span>
                       {weatherRangeLabel ? `${weatherRangeLabel} ` : ""}
-                      {data.weather.label}
+                      {mobile.weather.label}
                     </p>
                   ) : null}
                 </div>
@@ -390,95 +380,18 @@ export function MobileHomeDashboard({ data }: { data: DashboardData["mobile"] })
               </p>
             ) : null}
           </div>
+          </div>
         </section>
 
         <section className="h-0 bg-transparent" />
       </div>
-
-      {isRevenueModalOpen ? (
-        <div className="fixed inset-0 z-[70] md:hidden">
-          <div className="absolute inset-0 bg-[#0f1f17]/80 backdrop-blur-sm" />
-          <div className="relative flex h-full flex-col bg-gradient-to-br from-[#f3faf5] via-[#eef7f1] to-[#e3f1e8] px-4 pb-6 pt-8">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#666666]">Rolling 4 Weeks</p>
-                <h2 className="text-2xl font-bold text-[#666666]">Revenue Gap</h2>
-                <p className="mt-1 text-sm text-[#666666]">{data.rollingRevenueWindowLabel}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRevenueModalOpen(false)}
-                className="rounded-full border border-[#b0dcc1] bg-white px-4 py-2 text-sm font-semibold text-[#666666] shadow-sm"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="rounded-3xl border border-[#b0dcc1] bg-white/85 p-4 shadow-lg">
-              <div className="h-[44dvh] min-h-[280px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={revenuePieData}
-                      dataKey="value"
-                      innerRadius="80%"
-                      outerRadius="100%"
-                      cornerRadius="50%"
-                      paddingAngle={5}
-                      isAnimationActive={false}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Expected</p>
-                  <p className="text-base font-semibold text-[#666666]">{formatCurrencyFromCents(data.expectedMonthlyRevenue)}</p>
-                </div>
-                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Collected</p>
-                  <p className="text-base font-semibold text-[#287b40]">{formatCurrencyFromCents(data.collectedMoneyThisMonth)}</p>
-                </div>
-                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Progress</p>
-                  <p className="text-base font-semibold text-[#666666]">{revenueProgress}%</p>
-                </div>
-                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">
-                    {revenueGap > 0 ? "Gap" : "Ahead"}
-                  </p>
-                  <p className="text-base font-semibold text-[#666666]">
-                    {formatCurrencyFromCents(revenueGap > 0 ? revenueGap : revenueAboveTarget)}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Sent</p>
-                  <p className="text-base font-semibold text-[#666666]">{data.rollingSentInvoiceCount}</p>
-                  <p className="text-xs text-[#666666]">{formatCurrencyFromCents(data.rollingSentInvoiceAmount)}</p>
-                </div>
-                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Unpaid</p>
-                  <p className="text-base font-semibold text-[#666666]">{data.rollingUnpaidInvoiceCount}</p>
-                  <p className="text-xs text-[#666666]">{formatCurrencyFromCents(data.rollingUnpaidInvoiceAmount)}</p>
-                </div>
-                <div className="rounded-2xl border border-[#b0dcc1] bg-white px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#666666]">Overdue</p>
-                  <p className="text-base font-semibold text-[#cc9933]">{data.rollingOverdueInvoiceCount}</p>
-                  <p className="text-xs text-[#666666]">{formatCurrencyFromCents(data.rollingOverdueInvoiceAmount)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {isWeatherModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/45 px-4 pb-28 pt-10">
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
             <div className="flex items-start gap-3">
               <div className="mt-0.5 rounded-full bg-amber-100 p-2">
-                <img src="/LOAM_WeatherSkip_Icon.svg" alt="Weather Day Skip" className="h-[2.1875rem] w-[2.1875rem]" />
+                <img src="/LOAM_WeatherSkip_Icon_Evergreen.svg" alt="Weather Day Skip" className={iconClass} />
               </div>
               <div>
                 <h2 className="text-base font-semibold text-[#666666]">Skip Today&apos;s Jobs?</h2>

@@ -26,7 +26,7 @@ export default async function CreateInvoiceFromVisitPage() {
       />
 
       {rows.length === 0 ? (
-        <EmptyState title="No completed visits are missing invoices" />
+        <EmptyState variant="inline" title="No completed visits are missing invoices" />
       ) : (
         <>
           <div className="space-y-2 md:hidden">

@@ -81,7 +81,7 @@ export async function importClientsAction(
   _previousState: ClientImportFormState,
   formData: FormData,
 ): Promise<ClientImportFormState> {
-  await requirePermission(PERMISSIONS.importsRun);
+  const auth = await requirePermission(PERMISSIONS.importsRun);
   const payload = formData.get("payload");
 
   if (typeof payload !== "string") {
@@ -113,7 +113,7 @@ export async function importClientsAction(
   }
 
   try {
-    const result = await importClientsWithPlans(parsed.data.rows);
+    const result = await importClientsWithPlans(parsed.data.rows, auth.organizationId);
 
     revalidatePath("/");
     revalidatePath("/clients");

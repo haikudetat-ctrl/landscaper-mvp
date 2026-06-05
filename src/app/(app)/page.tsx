@@ -1,26 +1,33 @@
 import Link from "next/link";
 
 import { ActionCard, AlertCard, JobCard, MetricCard, mapVisitToJobCardData } from "@/components/cards";
-import { EmptyStateCard } from "@/components/empty-states/empty-state-card";
 import { MobileHomeDashboard } from "@/components/dashboard/mobile-home-dashboard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LinkButton } from "@/components/ui/link-button";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
-import { StatusPill } from "@/components/ui/status-pill";
+import { StatusPill } from "@/components/status/status-pill";
 import { DataTable, Td, Th } from "@/components/ui/table";
 import { getDashboardData } from "@/lib/db/dashboard";
 import { formatAddress, formatCurrencyFromCents, formatDate } from "@/lib/utils/format";
 import { requirePagePermission } from "@/lib/auth/page-authorization";
 import { PERMISSIONS } from "@/lib/auth/rbac";
+import { advanceToNextCanonicalStep } from "@/app/(app)/today/actions";
 
 export default async function DashboardPage() {
   await requirePagePermission(PERMISSIONS.dashboardView);
   const data = await getDashboardData();
 
+  async function advanceNextJobAction(formData: FormData) {
+    "use server";
+    const visitId = String(formData.get("visitId") ?? "").trim();
+    if (!visitId) return;
+    await advanceToNextCanonicalStep(visitId);
+  }
+
   return (
     <>
-      <MobileHomeDashboard data={data.mobile} />
+      <MobileHomeDashboard data={data} advanceNextJobAction={advanceNextJobAction} />
 
       <div className="hidden space-y-6 md:block">
         <PageHeader
@@ -40,7 +47,7 @@ export default async function DashboardPage() {
         </section>
 
         <section className="grid gap-4 lg:grid-cols-3">
-          <ActionCard title="Start Today's Run" description="Jump into the operator flow for today's route." ctaLabel="Open Run" />
+          <ActionCard title="Start Today's Run" description="Jump into the operator flow for today's route." ctaLabel="Open Today" />
           <ActionCard title="Generate Route" description="Optimize stop order before the crew rolls out." ctaLabel="Open Properties" variant="secondary" />
           <ActionCard title="Send Tomorrow Confirmations" description="Placeholder action until messaging automation is connected." ctaLabel="Coming Soon" variant="warning" disabled />
         </section>
@@ -50,7 +57,7 @@ export default async function DashboardPage() {
             variant="warning"
             title="Backlog needs attention"
             description={`${data.mobile.overdueVisitCount} visit${data.mobile.overdueVisitCount === 1 ? "" : "s"} are still open from prior dates.`}
-            ctaLabel="Open Daily Run"
+            ctaLabel="Open Today's Run"
           />
         ) : null}
 
@@ -86,8 +93,8 @@ export default async function DashboardPage() {
           title="Today&apos;s Jobs"
           right={
             <div className="flex gap-3">
-              <Link className="text-sm text-zinc-600 underline" href="/run">
-                Daily run
+              <Link className="text-sm text-zinc-600 underline" href="/today">
+                Today&apos;s run
               </Link>
               <Link className="text-sm text-zinc-600 underline" href="/service-visits">
                 Open visits
@@ -96,7 +103,7 @@ export default async function DashboardPage() {
           }
         >
           {data.todayJobs.length === 0 ? (
-            <EmptyStateCard
+            <EmptyState variant="card"
               icon={<span>+</span>}
               headline="No jobs scheduled today"
               helperText="Your schedule is clear right now. Add or generate visits to populate today's run."
@@ -163,7 +170,7 @@ export default async function DashboardPage() {
 
         <SectionCard title="Upcoming Week" right={<Link className="text-sm text-zinc-600 underline" href="/service-visits">Open visits</Link>}>
           {data.upcomingWeekJobs.length === 0 ? (
-            <EmptyState title="No upcoming visits in the next week" />
+            <EmptyState variant="inline" title="No upcoming visits in the next week" />
           ) : (
             <>
               <div className="space-y-2 md:hidden">
@@ -216,7 +223,7 @@ export default async function DashboardPage() {
           right={<Link className="text-sm text-zinc-600 underline" href="/service-visits?status=pending_reactivation">View all</Link>}
         >
           {data.skippedPendingReactivation.length === 0 ? (
-            <EmptyState title="No pending reactivation visits" />
+            <EmptyState variant="inline" title="No pending reactivation visits" />
           ) : (
             <ul className="space-y-2 text-sm">
               {data.skippedPendingReactivation.slice(0, 6).map((visit) => (
@@ -236,7 +243,7 @@ export default async function DashboardPage() {
           right={<Link className="text-sm text-zinc-600 underline" href="/invoices?status=overdue">View all</Link>}
         >
           {data.overdueInvoices.length === 0 ? (
-            <EmptyState title="No overdue invoices" />
+            <EmptyState variant="inline" title="No overdue invoices" />
           ) : (
             <ul className="space-y-2 text-sm">
               {data.overdueInvoices.slice(0, 6).map((invoice) => (
@@ -256,7 +263,7 @@ export default async function DashboardPage() {
           right={<Link className="text-sm text-zinc-600 underline" href="/properties">Open properties</Link>}
         >
           {data.propertiesMissingNextService.length === 0 ? (
-            <EmptyState title="All tracked properties have next service" />
+            <EmptyState variant="inline" title="All tracked properties have next service" />
           ) : (
             <ul className="space-y-2 text-sm">
               {data.propertiesMissingNextService.slice(0, 6).map((property) => (

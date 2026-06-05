@@ -77,9 +77,9 @@ export async function GET(request: NextRequest) {
       )
       .limit(3),
     supabase
-      .from("visit_photos")
-      .select("id, service_visit_id, photo_type, caption, storage_path")
-      .or(`photo_type.ilike.${pattern},caption.ilike.${pattern},storage_path.ilike.${pattern}`)
+      .from("media_assets")
+      .select("id, service_visit_id, photo_type, storage_path")
+      .or(`photo_type.ilike.${pattern},storage_path.ilike.${pattern}`)
       .limit(2),
     supabase
       .from("invoices")
@@ -162,11 +162,17 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  for (const row of visitPhotosResult.data ?? []) {
+  const visitPhotoRows = (visitPhotosResult.data ?? []) as Array<{
+    id: string;
+    service_visit_id: string | null;
+    photo_type: string;
+    storage_path: string;
+  }>;
+  for (const row of visitPhotoRows) {
     suggestions.push({
       id: `visit-photos-${row.id}`,
       href: row.service_visit_id ? `/service-visits/${row.service_visit_id}` : "/service-visits",
-      title: row.caption ?? row.photo_type,
+      title: row.photo_type,
       path: "Visit Photos",
       subtitle: row.storage_path,
     });

@@ -195,7 +195,7 @@ export async function importOnboardingClientsAction(
   }
 
   try {
-    const result = await importClientsWithPlans(parsed.data.rows);
+    const result = await importClientsWithPlans(parsed.data.rows, organizationId);
 
     const updateResult = await supabase
       .from("organization_onboarding")

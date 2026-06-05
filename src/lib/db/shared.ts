@@ -1,5 +1,24 @@
 import type { PostgrestError } from "@supabase/supabase-js";
 
+import { getCurrentUserMembership } from "@/lib/db/auth";
+
+export type OrgContext = {
+  orgId: string;
+  userId: string | null;
+};
+
+export async function requireOrgContext(): Promise<OrgContext> {
+  const { user, membership } = await getCurrentUserMembership();
+  if (!membership?.organization_id) {
+    throw new Error("User is not associated with an organization");
+  }
+
+  return {
+    orgId: membership.organization_id,
+    userId: user?.id ?? null,
+  };
+}
+
 export function throwDbError(error: PostgrestError | null, context: string): never | void {
   if (!error) return;
   throw new Error(`${context}: ${error.message}`);

@@ -21,16 +21,10 @@ export function PropertiesPageShell({
   properties,
   clients,
   todayOpenJobs,
-  mapProvider,
-  mapboxToken,
-  canRoute,
 }: {
   properties: Properties;
   clients: Clients;
   todayOpenJobs: TodayJob[];
-  mapProvider: "mapbox" | "osm";
-  mapboxToken?: string;
-  canRoute: boolean;
 }) {
   const router = useRouter();
   const titleId = useId();
@@ -212,7 +206,7 @@ export function PropertiesPageShell({
         )}
       </section>
 
-      <PropertyDashboard properties={properties} mapProvider={mapProvider} mapboxToken={mapboxToken} canRoute={canRoute} />
+      <PropertyDashboard properties={properties} />
 
       {isSheetMounted ? (
         <div className="fixed inset-0 z-[80]">
